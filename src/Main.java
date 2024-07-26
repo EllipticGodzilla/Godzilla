@@ -4,20 +4,10 @@ import file_database.File_interface;
 import gui.*;
 import network.Server;
 import javax.crypto.*;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
-import javax.xml.crypto.Data;
 import java.awt.*;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.Vector;
 
 public class Main {
@@ -25,6 +15,8 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException, InvocationTargetException, NoSuchMethodException, IllegalAccessException, InstantiationException {
         JFrame main_frame = Godzilla_frame.init();
         File_cipher.init();
+
+        System.out.println("ciao");
 
         //imposta l'icona del main frame
         Vector<Image> icons = new Vector<>();
@@ -40,7 +32,7 @@ public class Main {
         Runtime.getRuntime().addShutdownHook(shut_down);
     }
 
-    private static Thread shut_down = new Thread(new Runnable() {
+    private static final Thread shut_down = new Thread(new Runnable() {
         @Override
         public void run() {
             try {
