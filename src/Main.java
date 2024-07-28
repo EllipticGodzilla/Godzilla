@@ -3,6 +3,7 @@ import file_database.File_cipher;
 import file_database.File_interface;
 import gui.*;
 import network.Server;
+
 import javax.crypto.*;
 import javax.swing.*;
 import java.awt.*;
@@ -15,8 +16,6 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException, InvocationTargetException, NoSuchMethodException, IllegalAccessException, InstantiationException {
         JFrame main_frame = Godzilla_frame.init();
         File_cipher.init();
-
-        System.out.println("ciao");
 
         //imposta l'icona del main frame
         Vector<Image> icons = new Vector<>();

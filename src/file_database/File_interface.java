@@ -36,6 +36,12 @@ public class File_interface extends Database {
             jar_path = jar_path.substring(0, jar_path.length() - 1); //rimuove l'ultimo /
             jar_path = jar_path.substring(0, jar_path.lastIndexOf('/')); //rimuove Godzilla.jar dalla fine della path
 
+            if (new File(jar_path + "/database").mkdir()) { //se la cartella database non esisteva
+                new File(jar_path + "/database/ServerList.dat").createNewFile();
+                new File(jar_path + "/database/TerminalLog.dat").createNewFile();
+                new File(jar_path + "/database/DNS_CA_list.dat").createNewFile();
+            }
+
             ServerList = new SecureFile(jar_path + "/database/ServerList.dat", true);
             DNS_CA_list = new SecureFile(jar_path + "/database/DNS_CA_list.dat", true);
             TerminalLog = new SecureFile(jar_path + "/database/TerminalLog.dat", false);
