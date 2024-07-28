@@ -164,7 +164,7 @@ public abstract class ServerList_panel extends Database {
                 try {
                     Pattern ip_pattern = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
 
-                    if (valid_server_name(input.elementAt(0)) && ip_pattern.matcher(input.elementAt(1)).matches()) {
+                    if (valid_server_name(input.elementAt(1)) && (ip_pattern.matcher(input.elementAt(0)).matches() || valid_server_link(input.elementAt(0)))) {
                         Database.serverList.put(input.elementAt(1), new Pair<>(input.elementAt(0), input.elementAt(2))); //aggiunge indirizzo e nome alla mappa serverList
                         server_list.add(input.elementAt(1)); //aggiunge il nome del server alla JList rendendolo visibile
                     } else {
@@ -226,6 +226,11 @@ public abstract class ServerList_panel extends Database {
             }
         }
         return true;
+    }
+
+    private static boolean valid_server_link(String link) {
+        Pattern link_pat = Pattern.compile("[a-zA-Z]+\\.gz");
+        return link_pat.matcher(link).matches();
     }
 
     public static class CellPopupMenu extends JPopupMenu {
