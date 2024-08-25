@@ -1,14 +1,12 @@
 package network;
 
-import file_database.Database;
-import file_database.Pair;
+import files.Logger;
 import gui.*;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.lang.management.ThreadMXBean;
 import java.lang.reflect.InvocationTargetException;
 import java.net.Socket;
 import java.security.InvalidAlgorithmParameterException;
@@ -17,6 +15,7 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Vector;
 
 public abstract class Connection {
     private static Socket sck;
@@ -26,12 +25,18 @@ public abstract class Connection {
     private static String paired_usr;
 
     private static AESCipher cipher = null;
-    private static SecureRandom random = new SecureRandom();
+    private static boolean set_seed = false;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private static boolean secure = false;
     private static boolean dynamic = false;
 
     public static boolean init(String ip, int port) throws IOException {
+        if (!set_seed) { //imposta il seed di random
+            RANDOM.setSeed(System.currentTimeMillis());
+            set_seed = true;
+        }
+
         if (Connection.isClosed()) {
             sck = new Socket(ip, port);
 
@@ -68,14 +73,14 @@ public abstract class Connection {
     public static synchronized void write(byte conv_code, byte[] msg) { //invia una risposta
         try {
             if (!isClosed()) { //se è effettivamente connesso a qualcuno
-                if (Database.DEBUG) {CentralTerminal_panel.terminal_write("invio al server [" + (int)conv_code + "]: (" + new String(msg) + ") " + "\n", false);}
+                Logger.log("invio al server [" + (int)conv_code + "]: " + new String(msg));
 
                 byte[] msg_prefix = concat_array(new byte[] {conv_code}, msg); //concatena conv_code e msg[]
 
                 direct_write(msg_prefix); //se possibile cifra e invia il messaggio
             }
             else {
-                CentralTerminal_panel.terminal_write("impossibile inviare (" + new String(msg) + ") non essendo connessi a nessun server!\n", true);
+                Logger.log("non si è connessi a nessun server, impossibile inviare: " + new String(msg), true, '\n');
             }
         } catch (IllegalBlockSizeException | IOException | BadPaddingException | InvalidAlgorithmParameterException | InvalidKeyException e) {
             throw new RuntimeException(e);
@@ -136,7 +141,7 @@ public abstract class Connection {
             return new String(wait_for_bytes());
         }
         else {
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("wait_for_string() può essere utilizzato solamente quando la connessione non è dinamica!\n", true); }
+            Logger.log("wait_for_string() può essere utilizzato solamente quando la connessione non è dinamica!", true, '\n');
             throw new RuntimeException("wait_for_string() is a only non-dynamic connection function!");
         }
     }
@@ -144,7 +149,7 @@ public abstract class Connection {
     public static byte[] wait_for_bytes() { //se non è una connessione dinamica, attende che vengano inviati dei bytes
         if (!dynamic) {
             try {
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("attendo per dei bytes: ", false); }
+                Logger.log("attendo per dei bytes dal server...");
 
                 byte[] msg_size_byte = input.readNBytes(2); //legge la dimensione del messaggio che sta arrivando
                 int msg_len = (msg_size_byte[0] & 0Xff) | (msg_size_byte[1] << 8); //trasforma i due byte appena letti in un intero
@@ -155,30 +160,26 @@ public abstract class Connection {
                     msg = cipher.decode(msg);
                 }
 
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("(" + new String(msg) + ")\n", false); }
+                Logger.log("ricevuto dal server i bytes: " + new String(msg));
 
                 return msg; //se la connessione non è dinamica non viene aggiunto il byte conv_code quindi ritorna il messaggio così come è arrivato
-            } catch (IOException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException e) { //connessione con il server chiusa
-                throw new RuntimeException(e);
+            } catch (IOException | IllegalBlockSizeException | BadPaddingException e) { //connessione con il server chiusa
+                Logger.log("persa la connessione con il server", true, '\n');
+                return null;
             }
         }
         else { //se la connessione è dinamica non si possono ricevere bytes in questo modo
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("wait_for_bytes() può essere utilizzato solamente quando la connessione non è dinamica!\n", true); }
+            Logger.log("wait_for_bytes() può essere utilizzato solamente quando la connessione non è dinamica!", true, '\n');
             throw new RuntimeException("wait_for_bytes() is a only non-dynamic connection function!");
         }
     }
 
-    public static boolean set_cipher(AESCipher cipher) {
+    public static void set_cipher(AESCipher cipher) {
         if (!secure) {
             Connection.cipher = cipher;
             Receiver.set_cipher(cipher);
 
             secure = true;
-
-            return true;
-        }
-        else {
-            return false;
         }
     }
 
@@ -203,11 +204,6 @@ public abstract class Connection {
         paired_usr = null;
     }
 
-    //registra un nuovo prefisso per riconoscere i messaggi indirizzati ad una specifica mod (es "login" o "pair")
-    public static void register_prefix(String mod_name, String prefix, On_arrival action) {
-        Receiver.register_prefix(mod_name, prefix, action);
-    }
-
     public static void pair(String usr) {
         Connection.paired_usr = usr; //imposta il nome dell'utente con cui si è connessi
 
@@ -218,7 +214,7 @@ public abstract class Connection {
         //aggiorna i pulsanti in Client_panel
         ClientList_panel.update_buttons();
 
-        CentralTerminal_panel.terminal_write("connesso al client: " + Connection.paired_usr + "\n", false);
+        Logger.log("connesso con il client: " + Connection.paired_usr);
     }
 
     public static void unpair(boolean notify_server) {
@@ -232,18 +228,22 @@ public abstract class Connection {
             ButtonTopBar_panel.end_mod(notify_server); //chiude qualsiasi mod, se ce ne è una attiva
 
             //disattiva i pulsanti per le mod e resetta il terminal
+            ButtonTopBar_panel.end_mod(false);
             Godzilla_frame.disable_panel(Godzilla_frame.BUTTON_TOPBAR);
             ButtonTopBar_panel.setEnabled(false);
-            CentralTerminal_panel.reset_panel();
 
             //aggiorna i pulsanti in Client_panel
             ClientList_panel.update_buttons();
 
-            CentralTerminal_panel.terminal_write("disconnesso dal client: " + usr + "\n", false);
+            Logger.log("disconnesso dal client: " + usr);
         }
         else {
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("impossibile scollegarsi da un client, non c'è nessun client appaiato\n", true); }
+            Logger.log("impossibile scollegarsi da un client, non c'è nessun client appaiato", true, '\n');
         }
+    }
+
+    public static void register_to_bus(String bus_name, On_arrival action) {
+        Receiver.register_action(bus_name, action);
     }
 
     public static String get_paired_usr() {
@@ -261,7 +261,7 @@ public abstract class Connection {
     private static byte register_conv(On_arrival action) { //registra una nuova conversazione e ritorna il conv_code associato
         byte[] conv_code = new byte[1];
         do { //per evitare di avere conv_code duplicati o 0x00
-            random.nextBytes(conv_code); //genera un byte casuale che utilizzerà come conv_code
+            RANDOM.nextBytes(conv_code); //genera un byte casuale che utilizzerà come conv_code
         } while (conv_code[0] == 0x00 || !Receiver.new_conv(conv_code[0], action));
 
         return conv_code[0];
@@ -281,7 +281,7 @@ class Receiver {
     private static BufferedInputStream input;
 
     private static Map<Byte, On_arrival> conv_map = new LinkedHashMap<>(); //memorizza tutte le conversazioni che ha aperto con il server
-    private static Map<String, Map<String, On_arrival>> mod_prefix = new LinkedHashMap<>(); //mappa con tutti i prefissi registrati dalle varie mod e le azioni a loro associate, divisi per mod
+    private static final Map<String, Vector<On_arrival>> RECEIVING_ACTIONS = new LinkedHashMap<>(); //mappa con tutti i bus registrati e le varie azioni che devono avviare una volta ricevuto un messaggio per quel dato bus
 
     private static String pairing_usr = "";
     private static boolean secure = false;
@@ -289,16 +289,88 @@ class Receiver {
 
     public static void init(BufferedInputStream input) {
         Receiver.input = input;
+
+        if (RECEIVING_ACTIONS.isEmpty()) { // se ancora non sono stati creati i bus std
+            init_std_bus();
+        }
+    }
+
+    private static void init_std_bus() {
+        On_arrival EOC_std = ((_, _) -> { //end o connection
+            if (Connection.is_paired()) { //se è connesso ad un client si disconnette
+                Connection.unpair(false);
+            }
+
+            Server.disconnect(false); //si scollega dal server
+        });
+        register_action("EOC", EOC_std);
+
+        On_arrival EOP_std = ((_, _) -> { //end of pair
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.SINGLE_MSG,
+                    false,
+                    "disconnessione dal client avvenuta con successo"
+            ), null);
+
+            Connection.unpair(false);
+        });
+        register_action("EOP", EOP_std);
+
+        On_arrival EOM_std = ((_, _) -> { //end of mod (chiude la mod attiva al momento)
+            ButtonTopBar_panel.end_mod(false);
+            TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "il client " + Connection.get_paired_usr() + " ha chiuso la mod"), null);
+        });
+        register_action("EOM", EOM_std);
+
+        On_arrival pair_std = ((conv_code, msg) -> { //richieste di pairing
+            pairing_usr = new String(msg);
+
+            if (!Connection.is_paired()) { //se non è appaiato con nessuno
+                Logger.log("il client " + pairing_usr + " ha chiesto di collegarsi");
+
+                pair(pairing_usr, conv_code);
+            } else { //se è già appaiato con un client
+                Logger.log("l'utente: " + pairing_usr + " ha tentato di collegarsi mentre si è già collegati a: " + Connection.get_paired_usr());
+                Connection.write(conv_code, "den".getBytes()); //rifiuta
+            }
+        });
+        register_action("pair", pair_std);
+
+        On_arrival connChk_std = ((conv_code, _) -> { //controlli della connessione
+            Connection.write(conv_code, "ack".getBytes());
+        });
+        register_action("con_ck", connChk_std);
+
+        On_arrival cList_std = ((_, msg) -> { //aggiornamenti alla lista di client
+            try {
+                String msg_str = new String(msg);
+
+                Logger.log("ricevuta la lista aggiornata dei client connessi al server: " + msg_str);
+                ClientList_panel.update_client_list(msg_str);
+            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        register_action("clList", cList_std);
+
+        On_arrival SOM_std = ((conv_code, msg) -> { //start of mod
+            String mod_name = new String(msg);
+
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.SINGLE_MSG,
+                    true,
+                    "il client " + Connection.get_paired_usr() + " ha richiesto di attivare la mod " + mod_name
+            ), new StartMod(conv_code, mod_name));
+        });
+        register_action("SOM", SOM_std);
     }
 
     public static void start() {
-        if (reading == false && input != null) { //se non sta leggendo da un altro server
-            new Thread(reader).start(); //inizia a leggere da questo server
-        }
-        else if (input == null) {
+        if (!reading && input != null) { //se non sta leggendo da un altro server
+            new Thread(READER).start(); //inizia a leggere da questo server
+        } else if (input == null) {
             throw new RuntimeException("non è stato inizializzato il receiver");
-        }
-        else if (reading == true){
+        } else if (reading) {
             throw new RuntimeException("sto già ascoltando da un server");
         }
     }
@@ -307,15 +379,22 @@ class Receiver {
         return conv_map.putIfAbsent(conv_code, action) == null;
     }
 
-    public static boolean set_cipher(AESCipher cipher) {
+    public static void set_cipher(AESCipher cipher) {
         if (!secure) {
             Receiver.cipher = cipher;
             secure = true;
-
-            return true;
         }
-        else {
-            return false;
+    }
+
+    public static void register_action(String bus_name, On_arrival action) {
+        Vector<On_arrival> bus_acions = RECEIVING_ACTIONS.get(bus_name);
+        if (bus_acions == null) { //non è ancora stato registrata nessuna azione al dato bus
+            bus_acions = new Vector<>();
+            bus_acions.add(action);
+
+            RECEIVING_ACTIONS.put(bus_name, bus_acions);
+        } else {
+            bus_acions.add(action);
         }
     }
 
@@ -328,7 +407,7 @@ class Receiver {
     }
 
     private static boolean reading = false;
-    private static Runnable reader = () -> {
+    private static final Runnable READER = () -> {
         reading = true;
 
         try {
@@ -344,107 +423,69 @@ class Receiver {
                 byte conv_code = msg[0]; //memorizza il codice della conversazione
                 msg = Arrays.copyOfRange(msg, 1, msg.length); //elimina il conv_code dal messaggio
 
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("ricevuto dal server [" + (int)conv_code + "]" + new String(msg) + "\n", false);}
+                Logger.log("ricevuto dal server [" + (int) conv_code + "]: " + new String(msg));
 
                 On_arrival conv_action = conv_map.get(conv_code); //ricava l'azione da eseguire per questa conversazione
                 if (conv_action == null) { //se non è registrata nessuna azione processa il messaggio normalmente
-                    process_msg(conv_code, msg);
-                }
-                else { //se è specificata un azione la esegue
+                    String bus_name = get_bus_name(new String(msg));
+
+                    byte[] payload;
+                    if (bus_name.length() != msg.length) { //se oltre al bus_name c'è altro in msg
+                        payload = Arrays.copyOfRange(msg, bus_name.length() + 1, msg.length); //ritaglia solo il contenuto del messaggio
+                    }
+                    else { //se msg = bus_name
+                        payload = new byte[0];
+                    }
+
+                    send_bus_signal(bus_name, conv_code, payload);
+                } else { //se è specificata un azione la esegue
                     conv_map.remove(conv_code);
                     conv_action.on_arrival(conv_code, msg);
                 }
             }
-        } catch (IOException e) {
-            Server.disconnect(true);
-        } catch (Exception e) {
-            e.printStackTrace();
         }
+        catch (IOException _) {
+            Server.disconnect(true);
+        }
+        catch (IllegalBlockSizeException | BadPaddingException _) {
+            Logger.log("impossibile decifrare il messaggio ricevuto dal server, mi disconnetto", true, '\n');
+            Server.disconnect(false);
+        }
+        catch (ArrayIndexOutOfBoundsException _) {}
 
         reading = false;
     };
 
-    private static synchronized void process_msg(byte conv_code, byte[] msg) throws InvocationTargetException, InstantiationException, IllegalAccessException {
-        String msg_str = new String(msg);
+    private static String get_bus_name(String msg) {
+        char[] msg_charArray = msg.toCharArray();
+        StringBuilder bus_name = new StringBuilder();
 
-        try {
-            if (msg_str.equals("EOC")) { //se il server si scollega
-                if (Connection.is_paired()) {Connection.unpair(false);} //se è appaiato ad un client si scollega
-                Server.disconnect(false);
-            }
-            else if (msg_str.equals("EOP") && Connection.is_paired()) { //se il client a cui è appaiato si scollega
-                Connection.unpair(false);
-            }
-            else if (msg_str.equals("EOM") && !ButtonTopBar_panel.active_mod.equals("")) {
-                ButtonTopBar_panel.end_mod(false);
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "il client " + Connection.get_paired_usr() + " ha chiuso la mod"), null);
-            }
-            else if (msg_str.substring(0, 5).equals("pair:")) { //se è un messaggio per appaiarsi con un altro client
-                if (!Connection.is_paired()) { //se non è appaiato con nessuno
-                    pairing_usr = msg_str.substring(5);
-                    CentralTerminal_panel.terminal_write("l'utente " + pairing_usr + " ha chiesto di collegarsi\n", false);
-
-                    pair(pairing_usr, conv_code);
-                }
-                else { //se è già appaiato con un client
-                    if (Database.DEBUG) {
-                        CentralTerminal_panel.terminal_write("l'utente " + pairing_usr + " ha tentato di collegarsi\n", true);
-                    }
-                    Connection.write(conv_code, "den".getBytes()); //rifiuta
-                }
-            }
-            else if (msg_str.equals("con_ck")) { //check della connessione
-                Connection.write(conv_code, "ack".getBytes());
-            }
-            else if (msg_str.substring(0, 7).equals("clList:")) { //riceve la lista aggiornata dei client collegati al server
-                String clients_list = msg_str.substring(7);
-
-                CentralTerminal_panel.terminal_write("lista aggiornata dei client connessi al server: " + clients_list + "\n", false);
-                ClientList_panel.update_client_list(clients_list);
-            }
-            else if (msg_str.substring(0, 10).equals("start_mod:")) { //è appaiato ad un altro client e richiede di attivare una mod
-                String mod_name = msg_str.substring(10);
-
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "il client " + Connection.get_paired_usr() + " ha richiesto di attivare la mod " + mod_name), new StartMod(conv_code, mod_name));
-            }
-            else if (!ButtonTopBar_panel.active_mod.equals("")) { //manage dei messaggi inviati fra le mod, se ce ne è una attiva
-                check_registered_prefix(ButtonTopBar_panel.active_mod, conv_code, msg_str, msg);
-            }
-            else {
-                CentralTerminal_panel.terminal_write("è stato ricevuto dal server (" + msg_str + ") non riconosciuto\n", true);
+        for (int i = 0; i < msg.length(); i++) {
+            if (msg_charArray[i] == ':') {
+                break;
+            } else {
+                bus_name.append(msg_charArray[i]);
             }
         }
-        catch (StringIndexOutOfBoundsException e) { //è stato ricevuto un messaggio non riconosciuto
-            CentralTerminal_panel.terminal_write("è stato ricevuto dal server (" + msg_str + ") non è riconosciuto\n", true);
+
+        return bus_name.toString();
+    }
+
+    private static synchronized void send_bus_signal(String bus_name, byte conv_code, byte[] payload) {
+        Vector<On_arrival> actions = RECEIVING_ACTIONS.get(bus_name);
+
+        if (actions == null) {
+            Logger.log("è stato ricevuto dal server un messaggio per il bus: " + bus_name + " ma non c'è nessuno registrato", true, '\n');
+        } else {
+            for (On_arrival action : RECEIVING_ACTIONS.get(bus_name)) {
+                action.on_arrival(conv_code, payload);
+            }
         }
     }
 
-    private static void check_registered_prefix(String active_mod, byte conv_code, String msg_str, byte[] msg) {
-        /*
-        *  msg = <mod name>:<prefix>:<msg>,
-        *    1) mod name: nome della mod a cui fa riferimento il messaggio
-        *    2) prefix: ogni mod può registrare dei prefissi per categorizzare i messaggi e registrare delle azioni da eseguire una volta ricevuto un messaggio con un dato prefisso
-        *    3) msg: dati inviati
-         */
-        String[] msg_split = msg_str.split(":");
-        if (msg_split[0].equals(active_mod)) { //se la mod per cui è riferito il messaggio è quella attiva in questo momento
-            Map<String, On_arrival> prefix = mod_prefix.get(active_mod); //trova la mappa con tutti i prefissi registrati dalla mod attiva in questo momento
-
-            //elimina il prefisso dal messaggio
-            String msg_prefix = msg_split[1]; //ricava il prefisso registrato da questa mod
-            byte[] msg_body_byte = Arrays.copyOfRange(msg, active_mod.length() + msg_prefix.length() + 2, msg.length); //ricava il corpo del messaggio in forma di byte[]
-
-            On_arrival action = prefix.get(msg_prefix); //cerca l'azione da eseguire associata a questo prefisso
-            if (action != null) { //se questo prefisso è stato registrato ed ha trovato l'azione associata
-                action.on_arrival(conv_code, msg_body_byte);
-            }
-            else {
-                CentralTerminal_panel.terminal_write("è stato ricevuto dal server (" + msg_str + ") non è stato registrato il prefisso dalla mod (" + ButtonTopBar_panel.active_mod + ")\n", true);
-            }
-        }
-        else {
-            CentralTerminal_panel.terminal_write("è stato ricevuto un messaggio per la mod (" + msg_split[0] + ") che non è attiva\n", true);
-        }
+    public static void pair(String pairing_usr, byte conv_code) {
+        StartMod.Pair_request req = new StartMod.Pair_request(conv_code);
+        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "l'utente " + pairing_usr + " ha chiesto di collegarsi"), req);
     }
 
     private static class StartMod implements TempPanel_action {
@@ -458,82 +499,52 @@ class Receiver {
 
         @Override
         public void success() {
-            try {
-                Connection.write(CONV_CODE, "start".getBytes());
-                ButtonTopBar_panel.start_mod(MOD_NAME);
-            } catch (Exception e) {}
+            Connection.write(CONV_CODE, "start".getBytes());
+            ButtonTopBar_panel.start_mod(MOD_NAME);
         }
 
         @Override
         public void fail() {
             Connection.write(CONV_CODE, "stop".getBytes());
         }
-    };
 
-    private static class Pair_request implements TempPanel_action {
-        public byte conv_code;
+        private static class Pair_request implements TempPanel_action {
+            public byte conv_code;
 
-        public Pair_request(byte conv_code) {
-            this.conv_code = conv_code;
-        }
-
-        @Override
-        public synchronized void success() { //connessione accettata
-            if (!Connection.is_paired()) { // se non è appaiato con nessun client
-                if (Database.DEBUG) {CentralTerminal_panel.terminal_write("accettata la connessione con il client, attendo conferma dal server\n", false);}
-                Connection.write(conv_code, "acc".getBytes(), pairing_check);
+            public Pair_request(byte conv_code) {
+                this.conv_code = conv_code;
             }
-            else {
-                if (Database.DEBUG) {CentralTerminal_panel.terminal_write("tentativo di accettare la connessione con il client fallito, si è già connessi ad un altro client\n", true);}
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "impossibile accettare più di una connessione"), null);
-                Connection.write(conv_code, "den".getBytes());
+
+            @Override
+            public synchronized void success() { //connessione accettata
+                if (!Connection.is_paired()) { // se non è appaiato con nessun client
+                    Logger.log("accettata la connessione con il client, attendo conferma dal server");
+                    Connection.write(conv_code, "acc".getBytes(), PAIRING_CHECK);
+                } else {
+                    Logger.log("tentativo di accettare la connessione con il client fallito, si è già connessi al client: " + Connection.get_paired_usr(), true, '\n');
+                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "impossibile accettare più di una connessione"), null);
+                    Connection.write(conv_code, "den".getBytes());
+                }
             }
-        }
 
-        @Override
-        public synchronized void fail() { //connessione rifiutata
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("rifiutata la connessione con il client\n", false); }
-
-            Connection.write(this.conv_code, "den".getBytes());
-        }
-
-        //attende una conferma dell'appaiamento dal server
-        private On_arrival pairing_check = (cc, msg) -> {
-            if (new String(msg).equals("acc")) {
-                Connection.pair(pairing_usr);
-
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("connessione avvenuta con successo!\n", false); }
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "connessione con il client " + pairing_usr + " avvenuta con successo"), null);
+            @Override
+            public synchronized void fail() { //connessione rifiutata
+                Logger.log("rifiutata la connessione con il client");
+                Connection.write(this.conv_code, "den".getBytes());
             }
-            else {
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("connessione con l'utente " + pairing_usr + " fallita\n", true); }
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "connessione con il client " + pairing_usr + " fallito"), null);
-            }
-        };
-    }
 
-    public static void pair(String pairing_usr, byte conv_code) {
-        Pair_request req = new Pair_request(conv_code);
-        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "l'utente " + pairing_usr + " ha chiesto di collegarsi"), req);
-    }
+            //attende una conferma dell'appaiamento dal server
+            private final On_arrival PAIRING_CHECK = (_, msg) -> {
+                if (new String(msg).equals("acc")) {
+                    Connection.pair(pairing_usr);
 
-    public static void register_prefix(String mod_name, String pref, On_arrival action) { //registra un prefisso per i messaggi ricevuti dal server
-        Map<String, On_arrival> prefix_map = mod_prefix.get(mod_name);
-
-        if (prefix_map != null) { //se questa mod ha già altri prefissi registrati
-            if (!prefix_map.containsKey(pref)) { //se non contiene già questo prefisso
-                prefix_map.put(pref, action);
-            }
-            else { //se è già stato registrato questo prefisso
-                CentralTerminal_panel.terminal_write("impossibile registrare il prefisso \"" + pref + "\" per la mod \"" + mod_name + "\", è già stato registrato", true);
-                throw new RuntimeException("impossibile registrare il prefisso \"" + pref + "\" per la mod \"" + mod_name + "\", è già stato registrato");
-            }
-        }
-        else { //se è il primo che registra
-            prefix_map = new LinkedHashMap<>();
-            mod_prefix.put(mod_name, prefix_map);
-
-            prefix_map.put(pref, action);
+                    Logger.log("connessione con il client: " + pairing_usr + " instaurata con successo");
+                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "connessione con il client " + pairing_usr + " avvenuta con successo"), null);
+                } else {
+                    Logger.log("tentativo di connessione con il client: " + pairing_usr + " fallito");
+                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "connessione con il client " + pairing_usr + " fallito"), null);
+                }
+            };
         }
     }
 }

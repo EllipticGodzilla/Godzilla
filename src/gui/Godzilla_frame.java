@@ -1,5 +1,6 @@
 package gui;
 
+import gui.custom.GFrame;
 import gui.custom.GLayeredPane;
 
 import javax.swing.*;
@@ -9,11 +10,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
 public abstract class Godzilla_frame {
-    //tutti i pannelli da aggiungere al frame
-    private static JPanel server_list = null;
-    private static JPanel client_list = null;
-    private static JPanel button_topbar = null;
-    private static JLayeredPane central_terminal = null;
     private static JPanel temp_panel = null;
 
     //ricorda quali pannelli erano attivi prima di aprire una temp window in modo da riattivarli una volta chiusa
@@ -22,21 +18,20 @@ public abstract class Godzilla_frame {
     public static final int BUTTON_TOPBAR = 2;
 
     private static boolean active = true;
-    private static boolean[] active_panel = new boolean[] {true, false, false};
+    private static final boolean[] ACTIVE_PANELS = new boolean[] {true, false, false};
 
-    private static JFrame godzilla_frame = null;
+    private static GFrame godzilla_frame = null;
 
     public static JFrame init() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException { //inizializza la schermata e ritorna il JFrame
         if (godzilla_frame == null) {
-            godzilla_frame = new JFrame("Godzilla - Client");
-            godzilla_frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            godzilla_frame.setMinimumSize(new Dimension(900, 500));
+            godzilla_frame = new GFrame("Godzilla - Client");
 
             //inizializza tutti i pannelli che formeranno la gui principale
-            server_list = ServerList_panel.init();
-            client_list = ClientList_panel.init();
-            button_topbar = ButtonTopBar_panel.init();
-            central_terminal = CentralTerminal_panel.init();
+            //tutti i pannelli da aggiungere al frame
+            JPanel server_list = ServerList_panel.init();
+            JPanel client_list = ClientList_panel.init();
+            JPanel button_topbar = ButtonTopBar_panel.init();
+            JPanel central_terminal = Central_panel.init();
             temp_panel = TempPanel.init();
 
             //inizializza la gui principale (tutti i pannelli tranne Temp Panels)
@@ -53,14 +48,12 @@ public abstract class Godzilla_frame {
             c.gridy = 2;
             c.gridheight = 1;
             c.weighty = 0.4; //deve compensare per selection panel
-            c.insets = new Insets(5, 10, 10, 5);
             content_panel.add(server_list, c);
 
             c.gridx = 0;
             c.gridy = 0;
             c.gridheight = 2;
             c.weighty = 0.6; //selection panel deve essere un po' più alto rispetto a connection panel
-            c.insets = new Insets(10, 10, 5, 5);
             content_panel.add(client_list, c);
 
             c.weightx = 0.78; //i due pannelli sulla destra, devono essere più lunghi e conpensare i due pannelli sulla sinistra
@@ -69,13 +62,11 @@ public abstract class Godzilla_frame {
             c.gridy = 0;
             c.gridheight = 1;
             c.weighty = 0; //la top bar non viene ridimensionata per le y
-            c.insets = new Insets(10, 5, 5, 10);
             content_panel.add(button_topbar, c);
 
             c.gridx = 1;
             c.gridy = 1;
             c.weighty = 1; //per compensare la top bar
-            c.insets = new Insets(5, 5, 10, 10);
             c.gridheight = 2;
             content_panel.add(central_terminal, c);
 
@@ -85,9 +76,18 @@ public abstract class Godzilla_frame {
             lp.add(temp_panel, JLayeredPane.POPUP_LAYER);
 
             godzilla_frame.setLayeredPane(lp);
+            int menu_height = godzilla_frame.init_title_bar();
+            lp.set_menu_height(menu_height - 2);
+
+            Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
+            godzilla_frame.setLocation(
+                    screen_size.width/2 - godzilla_frame.getWidth()/2,
+                    screen_size.height/2 - godzilla_frame.getHeight()/2
+            );
+
             godzilla_frame.setVisible(true);
 
-            //mantiene TempPanel sempre al centro del frame
+            //mantiene gui.TempPanel sempre al centro del frame
             godzilla_frame.addComponentListener(new ComponentListener() {
                 @Override
                 public void componentMoved(ComponentEvent e) {}
@@ -98,26 +98,26 @@ public abstract class Godzilla_frame {
 
                 @Override
                 public void componentResized(ComponentEvent e) {
-                    recenter_temp_panel();
+                    TempPanel.recenter_in_frame();
                 }
             });
         }
         return godzilla_frame;
     }
 
-    public static void set_title(String title) {
-        Godzilla_frame.godzilla_frame.setTitle(title);
+    public static void update_colors() {
+        godzilla_frame.update_colors();
     }
 
-    protected static boolean is_enabled(int panel) {
-        return active_panel[panel];
+    public static void set_title(String title) {
+        Godzilla_frame.godzilla_frame.setTitle(title);
     }
 
     protected static boolean enabled() {
         return active;
     }
 
-    protected static void disable_panels() { //disabilita tutti i pannelli quando si apre TempPanel
+    protected static void disable_panels() { //disabilita tutti i pannelli quando si apre gui.TempPanel
         active = false;
 
         ServerList_panel.setEnabled(false);
@@ -126,26 +126,23 @@ public abstract class Godzilla_frame {
     }
 
     public static void disable_panel(int panel) {
-        active_panel[panel] = false;
+        ACTIVE_PANELS[panel] = false;
     }
 
     public static void enable_panel(int panel) {
-        active_panel[panel] = true;
+        ACTIVE_PANELS[panel] = true;
     }
 
-    protected static void enable_panels() { //riattiva i pannelli una volta chiusa TempPanel
+    protected static void enable_panels() { //riattiva i pannelli una volta chiusa gui.TempPanel
         active = true;
 
-        ServerList_panel.setEnabled(active_panel[SERVER_LIST]);
-        ClientList_panel.setEnabled(active_panel[CLIENT_LIST]);
-        ButtonTopBar_panel.setEnabled(active_panel[BUTTON_TOPBAR]);
+        ServerList_panel.setEnabled(ACTIVE_PANELS[SERVER_LIST]);
+        ClientList_panel.setEnabled(ACTIVE_PANELS[CLIENT_LIST]);
+        ButtonTopBar_panel.setEnabled(ACTIVE_PANELS[BUTTON_TOPBAR]);
     }
 
-    protected static void recenter_temp_panel() {
-        temp_panel.setLocation(
-                godzilla_frame.getWidth() / 2 - temp_panel.getWidth() / 2,
-                godzilla_frame.getHeight() / 2 - temp_panel.getHeight() / 2
-        );
+    public static Rectangle get_bounds() {
+        return godzilla_frame.getBounds();
     }
 }
 

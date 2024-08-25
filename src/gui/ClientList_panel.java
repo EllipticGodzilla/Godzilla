@@ -1,11 +1,15 @@
 package gui;
 
-import file_database.Database;
+import files.Database;
+import files.Logger;
 import gui.custom.GList;
 import gui.custom.GScrollPane;
+import gui.graphicsSettings.ButtonIcons;
+import gui.graphicsSettings.GraphicsSettings;
 import network.Connection;
 import network.On_arrival;
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -21,29 +25,25 @@ public abstract class ClientList_panel extends Database {
     protected static JPanel init() throws IOException {
         if (client_panel == null) {
             client_panel = new JPanel();
-            client_panel.setBackground(new Color(58, 61, 63));
             client_panel.setLayout(new GridBagLayout());
+            client_panel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 5));
 
             //inizializza tutti i componenti della gui
             connect = new JButton();
             disconnect = new JButton();
-            clients_list = new GList();
+            clients_list = new GList(
+                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_background"),
+                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_foreground"),
+                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_background"),
+                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_foreground"),
+                    (Border) GraphicsSettings.active_option.get_value("client_panel_list_selected_border")
+            );
             GScrollPane clients_scroller = new GScrollPane(clients_list);
-            JTextArea spacer = new JTextArea();
+            JPanel spacer = new JPanel();
 
             disconnect.setEnabled(false);
 
-            spacer.setBackground(new Color(58, 61, 63));
             spacer.setFocusable(false);
-
-            connect.setIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_on.png")));
-            connect.setRolloverIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_on_sel.png")));
-            connect.setPressedIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_on_pres.png")));
-            connect.setDisabledIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_on_dis.png")));
-            disconnect.setIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_off.png")));
-            disconnect.setRolloverIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_off_sel.png")));
-            disconnect.setPressedIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_off_pres.png")));
-            disconnect.setDisabledIcon(new ImageIcon(ClientList_panel.class.getResource("/images/power_off_dis.png")));
 
             connect.setBorder(null);
             disconnect.setBorder(null);
@@ -51,6 +51,11 @@ public abstract class ClientList_panel extends Database {
 
             connect.addActionListener(try_pair);
             disconnect.addActionListener(disconnect_list);
+
+            connect.setOpaque(false);
+            disconnect.setOpaque(false);
+            connect.setContentAreaFilled(false);
+            disconnect.setContentAreaFilled(false);
 
             GridBagConstraints c = new GridBagConstraints();
 
@@ -86,37 +91,62 @@ public abstract class ClientList_panel extends Database {
             connect.setEnabled(false);
             disconnect.setEnabled(false);
             clients_scroller.setPreferredSize(new Dimension(0, 0));
+            update_colors();
         }
 
         return client_panel;
     }
 
-    public static ActionListener try_pair = e -> {
+    public static void update_colors() {
+        client_panel.setBackground((Color) GraphicsSettings.active_option.get_value("client_panel_background"));
+        client_panel.getComponents()[2].setBackground((Color) GraphicsSettings.active_option.get_value("client_panel_background"));
+        clients_list.change_colors(
+                (Color) GraphicsSettings.active_option.get_value("client_panel_list_background"),
+                (Color) GraphicsSettings.active_option.get_value("client_panel_list_foreground"),
+                (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_background"),
+                (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_foreground"),
+                (Border) GraphicsSettings.active_option.get_value("client_panel_list_selected_border")
+        );
+
+        ButtonIcons connect_icon = (ButtonIcons) GraphicsSettings.active_option.get_value("client_panel_connect");
+        ButtonIcons disconnect_icon = (ButtonIcons) GraphicsSettings.active_option.get_value("client_panel_disconnect");
+
+        connect.setIcon(connect_icon.getStandardIcon());
+        connect.setRolloverIcon(connect_icon.getRolloverIcon());
+        connect.setPressedIcon(connect_icon.getPressedIcon());
+        connect.setDisabledIcon(connect_icon.getDisabledIcon());
+        disconnect.setIcon(disconnect_icon.getStandardIcon());
+        disconnect.setRolloverIcon(disconnect_icon.getRolloverIcon());
+        disconnect.setPressedIcon(disconnect_icon.getPressedIcon());
+        disconnect.setDisabledIcon(disconnect_icon.getDisabledIcon());
+    }
+
+    public static ActionListener try_pair = _ -> {
         On_arrival server_rep = (conv_code, msg) -> {
             if (new String(msg).equals("acc")) { //appaiamento accettato
                 Connection.pair(clients_list.getSelectedValue());
-                CentralTerminal_panel.terminal_write("collegamento con " + clients_list.getSelectedValue() + " instaurato con successo!\n", false);
+                Logger.log("collegamento con il client: " + clients_list.getSelectedValue() + " instaurato con successo!");
                 TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "collegamento con " + clients_list.getSelectedValue() + " instaurato con successo!"), null);
 
                 Connection.write(conv_code, "acc".getBytes()); //appaiamento accettato
             }
             else { //appaiamento rifiutato
-                CentralTerminal_panel.terminal_write("collegamento con " + clients_list.getSelectedValue() + " rifiutato\n", true);
+                Logger.log("il collegamento con " + clients_list.getSelectedValue() + " è sato rifiutato");
                 TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "collegamento con " + clients_list.getSelectedValue() + " rifiutato"), null);
             }
         };
 
         String pair_usr = clients_list.getSelectedValue();
-        if (!pair_usr.equals("") && !Connection.is_paired()) { //se è selezionato un client e non è appaiato con nessun altro client
+        if (!pair_usr.isEmpty() && !Connection.is_paired()) { //se è selezionato un client e non è appaiato con nessun altro client
             Connection.write(("pair:" + pair_usr).getBytes(), server_rep);
         }
         else if (Connection.is_paired()) {
             TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "impossibile collegarsi a più di un client"), null);
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("tentativo di collegarsi ad un client mentre si è già collegati a: " + Connection.get_paired_usr() + "\n", true); }
+            Logger.log("tentativo di collegarsi ad un client mentre si è già collegati con: " + Connection.get_paired_usr(), true, '\n');
         }
-        else if (pair_usr.equals("")) {
+        else if (pair_usr.isEmpty()) {
             TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "selezionale il client a cui collegarsi"), null);
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("tentativo di collegarsi ad un client senza aver selezionato nulla dalla lista\n", true); }
+            Logger.log("non è stato selezionato nessun client a cui collegarsi dalla lista", true, '\n');
         }
     };
 
@@ -135,7 +165,7 @@ public abstract class ClientList_panel extends Database {
     }
 
     public static void update_buttons() {
-        if (Godzilla_frame.enabled()) { //se i bottoni dovrebbero essere attivi (se non lo sono verranno attivati correttamente una volta chiuso il TempPanel)
+        if (Godzilla_frame.enabled()) { //se i bottoni dovrebbero essere attivi (se non lo sono verranno attivati correttamente una volta chiuso il gui.TempPanel)
             disconnect.setEnabled(Connection.is_paired());
             connect.setEnabled(!Connection.is_paired());
         }
@@ -150,7 +180,7 @@ public abstract class ClientList_panel extends Database {
         String[] names = p.split(list);
 
         for (String name : names) {
-            if (!name.equals("")) {
+            if (!name.isEmpty()) {
                 clients_list.add(name);
             }
         }

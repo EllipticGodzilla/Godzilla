@@ -1,6 +1,7 @@
 package gui.custom;
 
 import javax.swing.*;
+import javax.swing.plaf.ScrollBarUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 
@@ -10,6 +11,24 @@ public class GScrollPane extends JScrollPane {
 
         this.setAutoscrolls(true);
         this.setBorder(BorderFactory.createLineBorder(new Color(72, 74, 75)));
+        this.setBackground(new Color(128, 131, 133));
+    }
+
+    public GScrollPane(Component c, int vertical_policy, int horizontal_policy) {
+        super(c, vertical_policy, horizontal_policy);
+        this.setBorder(BorderFactory.createLineBorder(new Color(72, 74, 75)));
+        this.setBackground(new Color(128, 131, 133));
+    }
+
+    public void set_scrollbar_thickness(int thickness) {
+        this.getVerticalScrollBar().setPreferredSize(new Dimension(
+                thickness,
+                this.getVerticalScrollBar().getPreferredSize().height
+        ));
+        this.getHorizontalScrollBar().setPreferredSize(new Dimension(
+                this.getHorizontalScrollBar().getPreferredSize().width,
+                thickness
+        ));
     }
 
     @Override
@@ -24,7 +43,7 @@ public class GScrollPane extends JScrollPane {
                 this.thumbHighlightColor = new Color(108, 111, 113);
             }
 
-            class null_button extends JButton {
+            static class null_button extends JButton {
                 public null_button() {
                     super();
                     this.setPreferredSize(new Dimension(0, 0));
@@ -32,13 +51,9 @@ public class GScrollPane extends JScrollPane {
             }
 
             @Override
-            protected JButton createDecreaseButton(int orientation) {
-                return new null_button();
-            }
+            protected JButton createDecreaseButton(int orientation) { return new null_button(); }
             @Override
-            protected JButton createIncreaseButton(int orientation) {
-                return new null_button();
-            }
+            protected JButton createIncreaseButton(int orientation) { return new null_button(); }
         });
 
         scrollBar.setBackground(new Color(128, 131, 133));
@@ -59,7 +74,7 @@ public class GScrollPane extends JScrollPane {
                 this.thumbHighlightColor = new Color(108, 111, 113);
             }
 
-            class null_button extends JButton {
+            static class null_button extends JButton {
                 public null_button() {
                     super();
                     this.setPreferredSize(new Dimension(0, 0));
@@ -70,7 +85,6 @@ public class GScrollPane extends JScrollPane {
             protected JButton createDecreaseButton(int orientation) { return new null_button(); }
             @Override
             protected JButton createIncreaseButton(int orientation) { return new null_button(); }
-
         });
 
         scrollBar.setBackground(new Color(128, 131, 133));

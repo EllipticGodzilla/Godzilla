@@ -1,6 +1,7 @@
 package network;
 
-import file_database.Database;
+import files.Database;
+import files.Logger;
 import gui.*;
 import javax.crypto.*;
 import java.io.IOException;
@@ -34,15 +35,7 @@ public abstract class Server {
     private static final int CA_DNS_PORT = 9696;
     private static final int SERVER_PORT = 31415;
 
-    private static MessageDigest sha3_hash;
-
-    static { //inizializza sha3_hash
-        try {
-            sha3_hash = MessageDigest.getInstance("SHA3-256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    private static MessageDigest sha3_hash = null;
 
     public static int start_connection_with(String link, String dns_ip) {
         Server.dns_ip = dns_ip;
@@ -55,17 +48,23 @@ public abstract class Server {
                 if (is_an_ip(link)) { //se viene dato l'indirizzo ip del server a cui collegarsi
                     ip = link;
 
-                    if (Database.DEBUG) { CentralTerminal_panel.terminal_write("conosciamo già l'indirizzo ip: " + ip + "\nmi collego al server DNS: ", false); }
-
+                    Logger.log("indirizzo ip del server: " + ip);
                     link = get_from_dns('r', ip);
-
-                    if (Database.DEBUG) { CentralTerminal_panel.terminal_write("ricevuto l'indirizzo (" + link + ")\n", false); }
-                } else { //se viene dato il link, si collega al DNS per ricevere l'indirizzo ip
-                    if (Database.DEBUG) { CentralTerminal_panel.terminal_write("conosciamo il link del server, link: " + link + "\nmi collego al server DNS: ", false); }
-
+                    Logger.log("link del server: " + link);
+                }
+                else { //se viene dato il link, si collega al DNS per ricevere l'indirizzo ip
+                    Logger.log("link del server: " + link);
                     ip = get_from_dns('d', link);
+                    Logger.log("indirizzo ip del server: " + ip);
 
-                    if (Database.DEBUG) { CentralTerminal_panel.terminal_write("ricevuto l'indirizzo ip (" + ip + ")\n", false); }
+                    if (ip.equals("error, the ip is not registered")) {
+                        Logger.log("impossibile trovare l'indirizzo ip legato a questo link: " + link, true, '\n');
+                        TempPanel.show(new TempPanel_info(
+                                TempPanel_info.SINGLE_MSG,
+                                false,
+                                "il dns legato a questo server non conosce il suo indirizzo ip"
+                        ), null);
+                    }
                 }
 
                 dns_alive = true;
@@ -73,11 +72,13 @@ public abstract class Server {
 
                 //riceve il certificato del server e controlla sia tutto in regola
                 boolean check_ce = check_certificate(link, ip);
-                if (check_ce == true) { //se il certificato è valido, genera una chiave sint size = (bis.read() & 0xff) | ((bis.read() & 0xff) int size = (bis.read() & 0xff) | ((bis.read() & 0xff) << 8);<< 8);immetrica e la invia al server
+                if (check_ce) { //se il certificato è valido, genera una chiave sint size = (bis.read() & 0xff) | ((bis.read() & 0xff) int size = (bis.read() & 0xff) | ((bis.read() & 0xff) << 8);<< 8);immetrica e la invia al server
+                    Logger.log("il certificato ricevuto dal server è valido");
+
                     Cipher pubKey_cipher = get_pub_cipher();
                     secure_with_aes(pubKey_cipher);
                 } else { //se è stato trovato un errore nel verificare il certificato
-                    CentralTerminal_panel.terminal_write("certificato non valido!", true);
+                    Logger.log("il certificato ricevuto dal server non è valido", true, '\n');
                     TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "il certificato ricevuto dal server non è valido, chiudo la connessione"), null);
 
                     Connection.close();
@@ -87,20 +88,20 @@ public abstract class Server {
 
                 return 0;
             } catch (UnknownHostException e) {
-                CentralTerminal_panel.terminal_write("è stato inserito un indirizzo ip non valido\n", true);
+                Logger.log("l'indirizzo ip inserito non è valido", true, '\n');
                 TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "l'indirizzo ip è stato inserito male, non ha senso"), null);
                 return E_INVIP;
             } catch (ConnectException e) {
                 if (dns_alive) { //se la connessione è stata rifiutata dal server
-                    CentralTerminal_panel.terminal_write("il server a cui si è cercato di connettersi non è raggiungibile\n", true);
+                    Logger.log("il server non è raggiungibile", true, '\n');
                     TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "connessione rifiutata, il server non è raggiungibile"), null);
                 } else { //se la connessione è stata rifiutata dal DNS
-                    CentralTerminal_panel.terminal_write("il server DNS " + dns_ip + " non è raggiungibile\n", true);
+                    Logger.log("il server dns a cui è registrato il server non è raggiungibile", true, '\n');
                     TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "errore nella configurazione del DNS, server non raggiungibile"), null);
                 }
                 return E_CONR;
             } catch (IOException e) {
-                CentralTerminal_panel.terminal_write("connessione interrotta inaspettatamente\n", true);
+                Logger.log("la connessione è stata interrotta inaspettatamente", true, '\n');
                 TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "impossibile connettersi al server"), null);
                 return E_GEN;
             } catch (Exception e) {
@@ -108,7 +109,7 @@ public abstract class Server {
             }
         }
         else {
-            CentralTerminal_panel.terminal_write("già connesso ad un server!\n", true);
+            Logger.log("impossibile connettersi al server: " + link + ", si è già connessi ad un server", true, '\n');
             TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "già connessi ad un server!"), null);
 
             return E_GEN;
@@ -131,10 +132,6 @@ public abstract class Server {
             String server_info = Connection.wait_for_string();
             byte[] server_certificate = Connection.wait_for_bytes();
 
-            if (Database.DEBUG) {
-                CentralTerminal_panel.terminal_write("ricevuto il certificato del server - ", false);
-            }
-
             //controlla che le informazioni coincidano con il certificato
             byte[] dec_ce = Database.DNS_CA_KEY.get(dns_ip).el1.doFinal(server_certificate); //decifra il certificato trovando l'hash delle informazioni del server
             byte[] server_info_hash = sha3_hash(server_info.getBytes());
@@ -149,10 +146,6 @@ public abstract class Server {
              * 3) l'indirizzo ip scritto nelle server_info (e quindi nel certificato) coincida con quello voluto, uguale a (2) non mi ricordo perché lo faccio, è redundant poiché già l'indirizzo è unico
              */
             if (Arrays.compare(dec_ce, server_info_hash) == 0 && info_array[1].equals(link) && info_array[2].equals(ip)) {
-                if (Database.DEBUG) {
-                    CentralTerminal_panel.terminal_write("valido!\n", false);
-                }
-
                 //salva le informazioni con cui il server si è registrato al dns
                 registered_name = info_array[0];
                 Server.link = info_array[1];
@@ -163,9 +156,6 @@ public abstract class Server {
 
                 return true;
             } else {
-                if (Database.DEBUG) {
-                    CentralTerminal_panel.terminal_write("non valido\n", true);
-                }
                 return false;
             }
         } catch (BadPaddingException e) {
@@ -188,14 +178,13 @@ public abstract class Server {
 
         byte[] received_check = Connection.wait_for_bytes(); //attende che il server invii i check bytes cifrati con la chiave di sessione
         if (Arrays.compare(received_check, check) != 0) { //se i due array non coincidono, i byte di check sono stati cifrati in modo errato da parte del server
-            CentralTerminal_panel.terminal_write("il server non ha cifrato correttamente il check code, chiudo la connessione\n", true);
+            Logger.log("il server non ha cifrato correttamente il check code, chiudo la connessione", true, '\n');
             Connection.close(); //chiude la connessione
         }
         else { //se il server cifra correttamente i byte di check prosegue con il protocollo:
-            CentralTerminal_panel.terminal_write("il server ha cifrato correttamente il check code\n", false);
+            Logger.log("check code cifrato correttamente dal server, connessione instaurata con successo");
 
-            CentralTerminal_panel.terminal_write("connessione sicura instaurata con il server\n", false);
-            ServerList_panel.update_button(); //disattiva il tasto per collegarsi ad un server ed attiva quello per scollegarsi
+            ServerList_panel.update_button_enable(); //disattiva il tasto per collegarsi ad un server ed attiva quello per scollegarsi
 
             Connection.start_dinamic(); //inizia a ricevere messaggi dal server in modo dinamico
             login_register(); //si registra o fa il login
@@ -206,7 +195,7 @@ public abstract class Server {
     public static void disconnect(boolean notify_server) {
         try {
             if (!Connection.isClosed()) {
-                CentralTerminal_panel.terminal_write("disconnessione dal server\n", false);
+                Logger.log("disconnessione dal server");
                 Godzilla_frame.set_title("Godzilla - Client");
 
                 //se è appaiato con un altro client si scollega
@@ -226,7 +215,7 @@ public abstract class Server {
                 Godzilla_frame.disable_panel(Godzilla_frame.CLIENT_LIST);
 
                 //aggiorna quali pulsati sono attivi nella server_list gui
-                ServerList_panel.update_button();
+                ServerList_panel.update_button_enable();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -241,20 +230,17 @@ public abstract class Server {
     }
 
     private static void login_register() {
-        if (Database.DEBUG) { CentralTerminal_panel.terminal_write("chiedo se vuole fare il login: action = " + login_or_register + "\n", false); }
         TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "se vuoi fare il login premi \"ok\", altrimenti cancella"), login_or_register);
     }
 
     private static TempPanel_action login_or_register = new TempPanel_action() {
         @Override
         public void success() { //se vuole fare il login
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("chiedo nome utente e password per il login: action = " + login + "\n", false); }
             TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci nome utente: ", "inserisci password: ").set_psw_indices(1), login);
         }
 
         @Override
         public void fail() { //se vuole registrarsi o se vuole uscire
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("chiedo se vuole registrarsi: action = " + login_or_register + "\n", false); }
             TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "se vuoi registrarti premi \"ok\", altrimenti \"cancella\" e verrai disconnesso"), register_or_exit);
         }
     };
@@ -263,7 +249,7 @@ public abstract class Server {
         @Override
         public void success() { //sono stati inseriti nome utente e password
             try {
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("provo a fare il login - ", false); }
+                Logger.log("tento di eseguire il login all'utente: " + input.elementAt(0));
                 byte[] psw_hash = psw_array(input.elementAt(0).getBytes(), input.elementAt(1).getBytes()); //calcola l'hash da utilizzare come password per effettuare il login
 
                 //forma il messaggio da inviare al server "login:<usr>;sha3-256(<psw>+0xff.ff^<usr>)" e lo invia
@@ -271,39 +257,33 @@ public abstract class Server {
                 System.arraycopy(psw_hash, 0, server_msg, 7 + input.elementAt(0).length(), psw_hash.length);
 
                 Connection.write(server_msg, login_result); //attende una risposta dal server
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
-            }
+            } catch (NoSuchAlgorithmException _) {}
         }
 
-        private On_arrival login_result = (conv_code, msg) -> { //una volta ricevuta la risposta dal server
+        private On_arrival login_result = (_, msg) -> { //una volta ricevuta la risposta dal server
             if (new String(msg).equals("log")) { //se il login è andato a buon fine
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("password e nome utente giusti\n", false); }
-                CentralTerminal_panel.terminal_write("login effettuato con successo! username = " + input.elementAt(0) + "\n", false);
+                Logger.log("login effettuato con successo");
 
                 username = input.elementAt(0);
                 Godzilla_frame.set_title(server_name + " (" + registered_name + ")" + " - " + username);
 
                 //attiva il pannello con la lista dei client
-                CentralTerminal_panel.terminal_write("attivato il pannello con la lista dei client\n", false);
                 Godzilla_frame.enable_panel(Godzilla_frame.CLIENT_LIST);
                 ClientList_panel.setEnabled(true);
             }
             else { //se nome utente o password sono sbagliati
-                if (Database.DEBUG) { CentralTerminal_panel.terminal_write("password o nome utente sbagliati\n", true); }
-
+                Logger.log("login fallito, nome utente o password errati");
                 TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "nome utente o password errati, premere \"ok\" per ritentare"), login_or_register);
             }
         };
 
         @Override
         public void fail() { //è stato premuto "cancella" viene chiesto nuovamente se vuole fare il login o se vuole registrarsi/scollegarsi
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("chiedo se vuole fare il login: action = " + login_or_register+ "\n", false); }
             TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "se vuoi fare il login premi \"ok\", altrimenti cancella"), login_or_register);
         }
     };
 
-    private static TempPanel_action register_or_exit = new TempPanel_action() {
+    private static final TempPanel_action register_or_exit = new TempPanel_action() {
         @Override
         public void success() { //vuole registrarsi
             TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci nome utente: ", "inserisci password: ").set_psw_indices(1), register);
@@ -333,13 +313,12 @@ public abstract class Server {
 
         private On_arrival register_result = (conv_code, msg) -> {
             if (Arrays.compare(msg, "reg".getBytes()) == 0) { //se la registrazione è andata a buon fine
-                CentralTerminal_panel.terminal_write("registrazione effettuata con successo! username = " + input.elementAt(0) + "\n", false);
+                Logger.log("è stato creato il nuovo utente con successo, nome utente: " + input.elementAt(0));
 
                 username = input.elementAt(0);
                 Godzilla_frame.set_title(server_name + " (" + registered_name + ")" + " - " + username);
 
                 //attiva il pannello con la lista dei client
-                CentralTerminal_panel.terminal_write("attivato il pannello con la lista dei client\n", false);
                 Godzilla_frame.enable_panel(Godzilla_frame.CLIENT_LIST);
                 ClientList_panel.setEnabled(true);
             }
@@ -399,6 +378,10 @@ public abstract class Server {
     }
 
     private static byte[] sha3_hash(byte[] txt) throws NoSuchAlgorithmException { //calcola l'hash di txt secondo l'algoritmo sha3
+        if (sha3_hash == null) {
+            sha3_hash = MessageDigest.getInstance("SHA3-256");
+        }
+
         return sha3_hash.digest(txt);
     }
 }

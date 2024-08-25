@@ -1,9 +1,10 @@
 package gui.custom;
 
-import file_database.Database;
-import file_database.Pair;
+import files.Database;
+import files.Pair;
 import network.Server;
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -24,25 +25,34 @@ public class GList extends JPanel {
     private Map<String, ListCell> elements = new LinkedHashMap<>();
     private int selected_index = -1;
 
-    private JPanel list_panel = new JPanel(); //pannello che contiene tutte le JTextArea della lista
-    private JTextArea filler = new JTextArea(); //filler per rimepire lo spazio in basso
+    private final JPanel LIST_PANEL = new JPanel(); //pannello che contiene tutte le JTextArea della lista
+    protected Color std_backg;
+    protected Color std_foreg;
+    protected Color sel_backg;
+    protected Color sel_foreg;
+    protected Border sel_border;
 
-    private Constructor popupMenu = null;
+    private Constructor<?> popupMenu = null;
 
-    public GList() {
+    public GList(Color backg, Color foreg, Color sel_foreg, Color sel_backg, Border sel_border) {
         super();
         this.setLayout(new GridBagLayout());
+        this.std_backg = backg;
+        this.std_foreg = foreg;
+        this.sel_foreg = sel_foreg;
+        this.sel_backg = sel_backg;
+        this.sel_border = sel_border;
 
-        this.setForeground(new Color(44, 46, 47));
-        this.setBackground(new Color(98, 101, 103));
+        this.setBackground(backg);
         this.setFont(new Font("custom_list", Font.BOLD, 11));
 
-        filler.setBackground(this.getBackground());
+        JPanel filler = new JPanel();
+        filler.setBackground(backg);
         filler.setFocusable(false);
-        filler.setEditable(false);
+        filler.setBorder(null);
 
-        list_panel.setLayout(new GridBagLayout());
-        list_panel.setBackground(this.getBackground());
+        LIST_PANEL.setLayout(new GridBagLayout());
+        LIST_PANEL.setBackground(this.getBackground());
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -51,14 +61,29 @@ public class GList extends JPanel {
         c.fill = GridBagConstraints.BOTH;
         c.weighty = 0;
         c.weightx = 1;
-        this.add(list_panel, c);
+        this.add(LIST_PANEL, c);
 
         c.gridy = 1;
         c.weighty = 1;
         this.add(filler, c);
     }
 
-    public void set_popup(Class PopupMenu) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public void change_colors(Color backg, Color foreg, Color sel_backg, Color sel_foreg, Border sel_border) {
+        this.std_backg = backg;
+        this.std_foreg = foreg;
+        this.sel_backg = sel_backg;
+        this.sel_foreg = sel_foreg;
+        this.sel_border = sel_border;
+
+        for (Component list_item : LIST_PANEL.getComponents()) {
+            ((ListCell) list_item).update_colors();
+        }
+
+        this.setBackground(backg);
+        this.getComponents()[1].setBackground(backg); //aggiorna lo sfondo del filler
+    }
+
+    public void set_popup(Class<?> PopupMenu) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         this.popupMenu = PopupMenu.getDeclaredConstructor(String.class, GList.class);
 
         for (ListCell cell : elements.values()) {
@@ -66,11 +91,14 @@ public class GList extends JPanel {
         }
     }
 
-    public void add(String name) throws InvocationTargetException, InstantiationException, IllegalAccessException { //aggiunge una nuova casella nell'ultima posizione
+    public void add(String name) { //aggiunge una nuova casella nell'ultima posizione
         ListCell cell = new ListCell(name, this, elements.size());
         elements.put(name, cell);
         if (this.popupMenu != null) {
-            cell.setComponentPopupMenu((JPopupMenu) this.popupMenu.newInstance(name, this));
+            try {
+                cell.setComponentPopupMenu((JPopupMenu) this.popupMenu.newInstance(name, this));
+            }
+            catch (InvocationTargetException | InstantiationException | IllegalAccessException _) {} //exception ignorate
         }
 
         GridBagConstraints c = new GridBagConstraints();
@@ -81,7 +109,7 @@ public class GList extends JPanel {
         c.gridy = elements.size() - 1;
         c.gridx = 0;
 
-        list_panel.add(cell, c);
+        LIST_PANEL.add(cell, c);
 
         this.updateUI(); //aggiorna la gui
     }
@@ -90,13 +118,22 @@ public class GList extends JPanel {
         ListCell cell = elements.get(name);
 
         elements.remove(name); //rimuove la cella dalla lista
-        list_panel.remove(cell); //rimuove la casella dalla lista
+        LIST_PANEL.remove(cell); //rimuove la casella dal pannello
 
-        if (cell.my_index == selected_index) { //se questa casella era selezionata
+        adjust_gridy(cell.MY_INDEX); //aggiusta il valore gridy per tutte le caselle sotto questa eliminata
+
+        if (cell.MY_INDEX == selected_index) { //se questa casella era selezionata
             selected_index = -1;
         }
 
         this.updateUI(); //aggiorna la gui
+    }
+
+    public void clear() { //rimuove tutti gli oggetti
+        LIST_PANEL.removeAll(); //rimuove tutti gli oggetti dal pannello
+        elements.clear(); //rimuove tutte le caselle dalla mappa
+
+        selected_index = -1;
     }
 
     public void rename_element(String old_name, String new_name) {
@@ -113,46 +150,56 @@ public class GList extends JPanel {
             return "";
         }
         else {
-            return ((ListCell) list_panel.getComponent(selected_index)).getText();
+            return ((ListCell) LIST_PANEL.getComponent(selected_index)).getText();
         }
     }
 
     public void reset_list() {
         elements = new LinkedHashMap<>();
-        list_panel.removeAll();
+        LIST_PANEL.removeAll();
         this.repaint();
 
         selected_index = -1;
     }
 
-    class ListCell extends JTextArea {
-        private static final Color STD_BACKGROUND = new Color(98, 101, 103);
-        private static final Color SEL_BACKGROUND = new Color(116, 121, 125);
-        private static final Color SEL_BORDER = new Color(72, 74, 75);
+    private void adjust_gridy(int from) {
+        GridBagLayout layout = (GridBagLayout) LIST_PANEL.getLayout();
+        Component[] components = LIST_PANEL.getComponents();
 
+        for (int i = from; i < LIST_PANEL.getComponents().length; i++) {
+            Component component = components[i];
+
+            GridBagConstraints constraints = layout.getConstraints(component);
+            constraints.gridy --;
+
+            layout.setConstraints(component, constraints);
+        }
+    }
+
+    static class ListCell extends JTextArea {
         private final GList PARENT_LIST;
-        private int my_index;
+        private final int MY_INDEX;
 
         public ListCell(String text, GList list, int index) {
             super(text);
             this.PARENT_LIST = list;
-            this.my_index = index;
+            this.MY_INDEX = index;
 
             //imposta tutti i colori
             this.setForeground(new Color(44, 46, 47));
-            this.setBackground(STD_BACKGROUND);
+            this.setBackground(list.std_backg);
             this.setFont(new Font("custom_list", Font.BOLD, 11));
-            this.setBorder(null);
+            this.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
 
             this.setEditable(false);
-            this.setCaretColor(STD_BACKGROUND);
+            this.setCaretColor(list.std_backg);
             this.setCursor(null);
 
-            this.addKeyListener(key_l);
-            this.addMouseListener(mouse_l);
+            this.addKeyListener(KEY_LISTENER);
+            this.addMouseListener(MOUSE_LISTENER);
         }
 
-        private KeyListener key_l = new KeyListener() {
+        private final KeyListener KEY_LISTENER = new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {}
             @Override
@@ -163,20 +210,20 @@ public class GList extends JPanel {
                 switch (e.getKeyCode()) {
                     case 40: //freccia in basso
                         try {
-                            ListCell next_cell = (ListCell) PARENT_LIST.list_panel.getComponent(my_index + 1);
+                            ListCell next_cell = (ListCell) PARENT_LIST.LIST_PANEL.getComponent(MY_INDEX + 1);
 
                             next_cell.set_selected();
                             next_cell.requestFocus();
-                        } catch (Exception ex) {} //se non esiste un elemento ad index my_index + 1
+                        } catch (Exception _) {} //se non esiste un elemento ad index my_index + 1
                         break;
 
                     case 38: //freccia in alto
                         try {
-                            ListCell prev_cell = (ListCell) PARENT_LIST.list_panel.getComponent(my_index - 1);
+                            ListCell prev_cell = (ListCell) PARENT_LIST.LIST_PANEL.getComponent(MY_INDEX - 1);
 
                             prev_cell.set_selected();
                             prev_cell.requestFocus();
-                        } catch (Exception ex) {} //se non esiste un elemento ad index my_index - 1
+                        } catch (Exception _) {} //se non esiste un elemento ad index my_index - 1
                         break;
 
                     case 27: //esc
@@ -191,7 +238,7 @@ public class GList extends JPanel {
             }
         };
 
-        private MouseListener mouse_l = new MouseListener() {
+        private final MouseListener MOUSE_LISTENER = new MouseListener() {
             @Override
             public void mouseEntered(MouseEvent e) {}
             @Override
@@ -208,29 +255,48 @@ public class GList extends JPanel {
         };
 
         public void set_selected() {
-            if (PARENT_LIST.selected_index != my_index) {
+            if (PARENT_LIST.selected_index != MY_INDEX) {
                 //deseleziona la casella selezionata in precedenza, se ne era selezionata una
                 if (PARENT_LIST.selected_index != -1) {
-                    ((ListCell) PARENT_LIST.list_panel.getComponent(PARENT_LIST.selected_index)).unselect();
+                    ((ListCell) PARENT_LIST.LIST_PANEL.getComponent(PARENT_LIST.selected_index)).unselect();
                 }
 
                 //imposta questa JTextArea come selezionata
-                setBackground(SEL_BACKGROUND);
-                setBorder(BorderFactory.createLineBorder(SEL_BORDER));
-                setCaretColor(SEL_BACKGROUND);
-                setSelectionColor(SEL_BACKGROUND);
+                setBackground(PARENT_LIST.sel_backg);
+                setForeground(PARENT_LIST.sel_foreg);
+                setBorder(PARENT_LIST.sel_border);
+                setCaretColor(PARENT_LIST.sel_backg);
+                setSelectionColor(PARENT_LIST.sel_backg);
 
-                PARENT_LIST.selected_index = my_index;
+                PARENT_LIST.selected_index = MY_INDEX;
             }
         }
 
         public void unselect() {
-            setBackground(STD_BACKGROUND);
-            setBorder(null);
-            setCaretColor(STD_BACKGROUND);
-            setSelectionColor(STD_BACKGROUND);
+            setBackground(PARENT_LIST.std_backg);
+            setForeground(PARENT_LIST.std_foreg);
+            setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
+            setCaretColor(PARENT_LIST.std_backg);
+            setSelectionColor(PARENT_LIST.std_backg);
 
             PARENT_LIST.selected_index = -1;
+        }
+
+        public void update_colors() {
+            if (PARENT_LIST.selected_index == MY_INDEX) {
+                setBackground(PARENT_LIST.sel_backg);
+                setForeground(PARENT_LIST.sel_foreg);
+                setBorder(PARENT_LIST.sel_border);
+                setCaretColor(PARENT_LIST.sel_backg);
+                setSelectionColor(PARENT_LIST.sel_backg);
+            }
+            else {
+                setBackground(PARENT_LIST.std_backg);
+                setForeground(PARENT_LIST.std_foreg);
+                setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
+                setCaretColor(PARENT_LIST.std_backg);
+                setSelectionColor(PARENT_LIST.std_backg);
+            }
         }
     }
 }

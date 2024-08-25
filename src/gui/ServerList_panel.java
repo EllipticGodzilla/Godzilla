@@ -1,21 +1,23 @@
 package gui;
 
-import file_database.Database;
-import file_database.File_interface;
-import file_database.Pair;
+import files.Database;
+import files.Logger;
+import files.Pair;
 import gui.custom.GList;
 import gui.custom.GScrollPane;
+import gui.graphicsSettings.ButtonIcons;
+import gui.graphicsSettings.GraphicsSettings;
 import network.Connection;
 import network.Server;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Base64;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class ServerList_panel extends Database {
@@ -23,21 +25,26 @@ public abstract class ServerList_panel extends Database {
     private static JButton connect;
     private static JButton disconnect;
     private static JButton add_server;
-    private static JButton add_dns;
     private static GList server_list; //rispetto a JList viene modificata la grafica ed inserito un popup per rinominare ed eliminare server dalla lista
 
     private static JPanel serverL_panel = null;
     protected static JPanel init() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
         if (serverL_panel == null) {
             serverL_panel = new JPanel();
-            serverL_panel.setBackground(new Color(58, 61, 63));
+            serverL_panel.setBackground((Color) GraphicsSettings.active_option.get_value("server_panel_background"));
             serverL_panel.setLayout(new GridBagLayout());
+            serverL_panel.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 5));
 
             connect = new JButton();
             disconnect = new JButton();
             add_server = new JButton();
-            add_dns = new JButton();
-            server_list = new GList();
+            server_list = new GList(
+                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_background"),
+                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_foreground"),
+                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_background"),
+                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_foreground"),
+                    (Border) GraphicsSettings.active_option.get_value("server_panel_list_selected_border")
+            );
             GScrollPane server_scroller = new GScrollPane(server_list); //rispetto a JScrollPane viene modificata la grafica
 
             disconnect.setEnabled(false);
@@ -48,38 +55,23 @@ public abstract class ServerList_panel extends Database {
             server_list.set_popup(CellPopupMenu.class);
 
             //inizializza tutti i componenti della gui
-
             connect.setBorder(null);
             disconnect.setBorder(null);
             add_server.setBorder(null);
-            add_dns.setBorder(null);
 
-            connect.setIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_on.png")));
-            connect.setRolloverIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_on_sel.png")));
-            connect.setPressedIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_on_pres.png")));
-            connect.setDisabledIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_on_dis.png")));
-            disconnect.setIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_off.png")));
-            disconnect.setRolloverIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_off_sel.png")));
-            disconnect.setPressedIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_off_pres.png")));
-            disconnect.setDisabledIcon(new ImageIcon(ServerList_panel.class.getResource("/images/power_off_dis.png")));
-            add_server.setIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_server.png")));
-            add_server.setRolloverIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_server_sel.png")));
-            add_server.setPressedIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_server_pres.png")));
-            add_server.setDisabledIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_server_dis.png")));
-            add_dns.setIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_dns.png")));
-            add_dns.setRolloverIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_dns_sel.png")));
-            add_dns.setPressedIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_dns_pres.png")));
-            add_dns.setDisabledIcon(new ImageIcon(ServerList_panel.class.getResource("/images/add_dns_dis.png")));
-
-            connect.setPreferredSize(new Dimension(30, 30));
-            disconnect.setPreferredSize(new Dimension(30, 30));
-            add_server.setPreferredSize(new Dimension(95, 30));
-            add_dns.setPreferredSize(new Dimension(73, 30));
-
-            connect.addActionListener(connect_listener);
+            connect.addActionListener(CONNECT_LISTENER);
             disconnect.addActionListener(disconnect_listener);
-            add_server.addActionListener(add_server_listener);
-            add_dns.addActionListener(add_dns_listener);
+            add_server.addActionListener(ADDSERVER_LISTENER);
+
+            connect.setOpaque(false);
+            disconnect.setOpaque(false);
+            add_server.setOpaque(false);
+            connect.setContentAreaFilled(false);
+            disconnect.setContentAreaFilled(false);
+            add_server.setContentAreaFilled(false);
+
+            JPanel sep = new JPanel();
+            sep.setBorder(null);
 
             //aggiunge tutti i componenti al pannello organizzando la gui
             GridBagConstraints c = new GridBagConstraints();
@@ -104,13 +96,10 @@ public abstract class ServerList_panel extends Database {
             c.insets = new Insets(0, 5, 5, 0);
             serverL_panel.add(connect, c);
 
-            c.weightx = 1; //spacing fra i bottoni per disconnettersi ed aggiungere un pulsante
+            c.weightx = 1; //spacing fra i bottoni
             c.gridx = 1;
-            c.gridy = 0;
-            c.fill = GridBagConstraints.VERTICAL;
-            c.anchor = GridBagConstraints.FIRST_LINE_END;
-            c.insets = new Insets(0, 5, 5, 5);
-            serverL_panel.add(add_dns, c);
+            c.insets = new Insets(0, 0, 0, 0);
+            serverL_panel.add(sep, c);
 
             c.weighty = 1;
             c.fill = GridBagConstraints.BOTH;
@@ -121,9 +110,38 @@ public abstract class ServerList_panel extends Database {
             serverL_panel.add(server_scroller, c);
 
             serverL_panel.setPreferredSize(new Dimension(0, 0));
-
+            update_colors();
         }
         return serverL_panel;
+    }
+
+    public static void update_colors() {
+        serverL_panel.setBackground((Color) GraphicsSettings.active_option.get_value("server_panel_background"));
+        serverL_panel.getComponents()[3].setBackground((Color) GraphicsSettings.active_option.get_value("server_panel_background")); //cambia il colore del separatore
+        server_list.change_colors(
+                (Color) GraphicsSettings.active_option.get_value("server_panel_list_background"),
+                (Color) GraphicsSettings.active_option.get_value("server_panel_list_foreground"),
+                (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_background"),
+                (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_foreground"),
+                (Border) GraphicsSettings.active_option.get_value("server_panel_list_selected_border")
+        );
+
+        ButtonIcons connect_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("server_panel_connect");
+        ButtonIcons disconnect_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("server_panel_disconnect");
+        ButtonIcons add_server_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("server_panel_add_server");
+
+        connect.setIcon(connect_icons.getStandardIcon());
+        connect.setRolloverIcon(connect_icons.getRolloverIcon());
+        connect.setPressedIcon(connect_icons.getPressedIcon());
+        connect.setDisabledIcon(connect_icons.getDisabledIcon());
+        disconnect.setIcon(disconnect_icons.getStandardIcon());
+        disconnect.setRolloverIcon(disconnect_icons.getRolloverIcon());
+        disconnect.setPressedIcon(disconnect_icons.getPressedIcon());
+        disconnect.setDisabledIcon(disconnect_icons.getDisabledIcon());
+        add_server.setIcon(add_server_icons.getStandardIcon());
+        add_server.setRolloverIcon(add_server_icons.getRolloverIcon());
+        add_server.setPressedIcon(add_server_icons.getPressedIcon());
+        add_server.setDisabledIcon(add_server_icons.getDisabledIcon());
     }
 
     public static void setEnabled(boolean enabled) {
@@ -136,42 +154,45 @@ public abstract class ServerList_panel extends Database {
         serverL_panel.setEnabled(enabled);
         add_server.setEnabled(enabled);
         server_list.setEnabled(enabled);
-        add_dns.setEnabled(enabled);
     }
 
-    public static void update_gui() throws InvocationTargetException, InstantiationException, IllegalAccessException {
+    public static void update_gui() {
         for (String name : Database.serverList.keySet()) { //aggiunge alla lista tutti i server caricati sul database
             server_list.add(name);
         }
     }
 
-    public static void update_button() {
+    public static void clear() {
+        server_list.clear();
+    }
+
+    public static void update_button_enable() {
         if (Godzilla_frame.enabled()) { //se i pulsanti dovrebbero essere attivi
             connect.setEnabled(Connection.isClosed());
             disconnect.setEnabled(!Connection.isClosed());
         }
     }
 
-    private static ActionListener add_server_listener = new ActionListener() {
+    private static final ActionListener ADDSERVER_LISTENER = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            error_name_ip.success();
+            ERROR_ACTION.success();
         }
 
-        private TempPanel_action name_and_ip = new TempPanel_action() {
+        private final TempPanel_action ADD_SERVER_ACTION = new TempPanel_action() {
             @Override
             public void success()  {
-                try {
-                    Pattern ip_pattern = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
+                Pattern ip_pattern = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
 
-                    if (valid_server_name(input.elementAt(1)) && (ip_pattern.matcher(input.elementAt(0)).matches() || valid_server_link(input.elementAt(0)))) {
-                        Database.serverList.put(input.elementAt(1), new Pair<>(input.elementAt(0), input.elementAt(2))); //aggiunge indirizzo e nome alla mappa serverList
-                        server_list.add(input.elementAt(1)); //aggiunge il nome del server alla JList rendendolo visibile
-                    } else {
-                        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "il nome o indirizzo inseriti non sono validi, inserire nome ed indirizzo validi"), error_name_ip);
-                    }
-                } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-                    throw new RuntimeException(e);
+                String server_link = input.elementAt(0);
+                String server_name = input.elementAt(1);
+                String dns_ip = input.elementAt(2);
+
+                if (valid_server_name(server_name) && (ip_pattern.matcher(server_link).matches() || valid_server_link(server_link))) {
+                    Database.serverList.put(server_name, new Pair<>(server_link, dns_ip)); //aggiunge indirizzo e nome alla mappa serverList
+                    server_list.add(server_name); //aggiunge il nome del server alla JList rendendolo visibile
+                } else {
+                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "il nome o indirizzo inseriti non sono validi, inserire nome ed indirizzo validi"), ERROR_ACTION);
                 }
             }
 
@@ -179,7 +200,7 @@ public abstract class ServerList_panel extends Database {
             public void fail() {} //non si vuole più aggiungere un server
         };
 
-        private TempPanel_action error_name_ip = new TempPanel_action() {
+        private final TempPanel_action ERROR_ACTION = new TempPanel_action() {
             @Override
             public void success() {
                 TempPanel.show(new TempPanel_info(
@@ -191,7 +212,7 @@ public abstract class ServerList_panel extends Database {
                 ).set_combo_box(
                         new int[] {2},
                         Database.DNS_CA_KEY.keySet().toArray(new String[0])
-                ), name_and_ip);
+                ), ADD_SERVER_ACTION);
             }
 
             @Override
@@ -200,22 +221,18 @@ public abstract class ServerList_panel extends Database {
 
     };
 
-    private static ActionListener add_dns_listener = e -> {
-        File_interface.req_dns_ca.success(); //richiede le informazioni per il nuovo dns
-    };
-
-    private static ActionListener connect_listener = e -> {
+    private static final ActionListener CONNECT_LISTENER = _ -> {
         Pair<String, String> server_info = Database.serverList.get(server_list.getSelectedValue());
         if (server_info != null) { //se è effttivamente selezionato un server
             String link = server_info.el1;
 
-            CentralTerminal_panel.terminal_write("connessione con il server: " + link + "\n", false);
+            Logger.log("tento la connessione con il server: " + link);
             Server.start_connection_with(link, server_info.el2);
             Server.server_name = server_list.getSelectedValue();
         }
     };
 
-    private static ActionListener disconnect_listener = e -> {
+    private static final ActionListener disconnect_listener = _ -> {
         Server.disconnect(true);
     };
 
@@ -229,7 +246,7 @@ public abstract class ServerList_panel extends Database {
     }
 
     private static boolean valid_server_link(String link) {
-        Pattern link_pat = Pattern.compile("[a-zA-Z]+\\.gz");
+        Pattern link_pat = Pattern.compile("[a-zA-Z_]+\\.gz");
         return link_pat.matcher(link).matches();
     }
 
@@ -243,38 +260,42 @@ public abstract class ServerList_panel extends Database {
             this.PARENT_LIST = list;
 
             UIManager.put("MenuItem.selectionBackground", new Color(108, 111, 113));
-            UIManager.put("MenuItem.selectionForeground", new Color(158, 161, 163));
+            UIManager.put("MenuItem.selectionForeground", Color.lightGray);
 
             JMenuItem rename = new JMenuItem("rename");
             JMenuItem remove = new JMenuItem("remove");
             JMenuItem info = new JMenuItem("info");
 
+            Border item_border = BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(78, 81, 83)),
+                    BorderFactory.createEmptyBorder(4, 2, 0, 0)
+            );
             this.setBorder(BorderFactory.createLineBorder(new Color(28, 31, 33)));
-            rename.setBorder(BorderFactory.createLineBorder(new Color(78, 81, 83)));
-            remove.setBorder(BorderFactory.createLineBorder(new Color(78, 81, 83)));
-            info.setBorder(BorderFactory.createLineBorder(new Color(78, 81, 83)));
+            rename.setBorder(item_border);
+            remove.setBorder(item_border);
+            info.setBorder(item_border);
 
             rename.setBackground(new Color(88, 91, 93));
             remove.setBackground(new Color(88, 91, 93));
             info.setBackground(new Color(88, 91, 93));
-            rename.setForeground(new Color(158, 161, 163));
-            remove.setForeground(new Color(158, 161, 163));
-            info.setForeground(new Color(158, 161, 163));
+            rename.setForeground(Color.lightGray);
+            remove.setForeground(Color.lightGray);
+            info.setForeground(Color.lightGray);
 
-            rename.addActionListener(rename_listener);
-            remove.addActionListener(remove_listener);
-            info.addActionListener(info_listener);
+            rename.addActionListener(RENAME_LISTENER);
+            remove.addActionListener(REMOVE_LISTENER);
+            info.addActionListener(INFO_LISTENER);
 
             this.add(rename);
             this.add(remove);
             this.add(info);
         }
 
-        private TempPanel_action rename_action = new TempPanel_action() {
+        private final TempPanel_action RENAME_ACTION = new TempPanel_action() {
             @Override
             public void success() {
                 if (valid_server_name(input.elementAt(0)) && !input.elementAt(0).equals(cell_name)) {
-                    CentralTerminal_panel.terminal_write("rinomino il server \"" + cell_name + "\" in \"" + input.elementAt(0) + "\"\n", false);
+                    Logger.log("rinomino il server \"" + cell_name + "\" in \"" + input.elementAt(0) + "\"");
                     PARENT_LIST.rename_element(cell_name, input.elementAt(0)); //modifica il nome nella lista visibile
 
                     Database.serverList.put( //modifica il nome nel database
@@ -285,7 +306,7 @@ public abstract class ServerList_panel extends Database {
 
                     cell_name = input.elementAt(0); //modifica il nome per questo popup
                 } else {
-                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "inserisci un nome valido ed unico fra tutti i server"), rename_fail);
+                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "inserisci un nome valido ed unico fra tutti i server"), RENAME_FAIL_ACTION);
                 }
             }
 
@@ -293,20 +314,20 @@ public abstract class ServerList_panel extends Database {
             public void fail() {} //non si vuole più rinominare il server
         };
 
-        private TempPanel_action rename_fail = new TempPanel_action() {
+        private final TempPanel_action RENAME_FAIL_ACTION = new TempPanel_action() {
             @Override
             public void success() {
-                TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci il nuovo nome per il server: " + cell_name), rename_action);
+                TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci il nuovo nome per il server: " + cell_name), RENAME_ACTION);
             }
 
             @Override
             public void fail() {} //essendo un messaggio non può "fallire"
         };
 
-        private TempPanel_action remove_confirm = new TempPanel_action() {
+        private final TempPanel_action RENAME_CONFIRM_ACTION = new TempPanel_action() {
             @Override
             public void success() {
-                CentralTerminal_panel.terminal_write("rimuovo il server \"" + cell_name + "\"\n", false);
+                Logger.log("rimuovo il server: " + cell_name + " dalla lista dei server memorizzati");
 
                 Database.serverList.remove(cell_name); //rimuove il server dal database
                 PARENT_LIST.remove(cell_name); //rimuove il server dalla lista visibile
@@ -316,15 +337,15 @@ public abstract class ServerList_panel extends Database {
             public void fail() {} //non vuole più rimuovere il server
         };
 
-        private ActionListener rename_listener = (e) -> {
-            TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci il nuovo nome per il server: " + cell_name), rename_action);
+        private final ActionListener RENAME_LISTENER = _ -> {
+            TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci il nuovo nome per il server: " + cell_name), RENAME_ACTION);
         };
 
-        private ActionListener remove_listener = (e) -> {
-            TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "il server " + cell_name + " verrà rimosso"), remove_confirm);
+        private final ActionListener REMOVE_LISTENER = _ -> {
+            TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "il server " + cell_name + " verrà rimosso"), RENAME_CONFIRM_ACTION);
         };
 
-        private ActionListener info_listener = (e) -> {
+        private final ActionListener INFO_LISTENER = _ -> {
             Pair<String, String> server_info = Database.serverList.get(cell_name);
             String ip_link = server_info.el1; //trova il link o l'ip del server a cui si riferisce questa casella
             String dns_ip = server_info.el2;

@@ -1,7 +1,9 @@
 package gui;
 
-import file_database.Database;
-import file_database.Pair;
+import files.Pair;
+import gui.custom.GComboBox;
+import gui.custom.GPasswordField;
+import gui.custom.GTextArea;
 
 import javax.swing.*;
 import java.awt.*;
@@ -10,8 +12,8 @@ import java.io.IOException;
 import java.util.Vector;
 
 abstract public class TempPanel {
-    private static JButton ok_button = new JButton();
-    private static JButton annulla_button = new JButton();
+    private static final JButton OK_BUTTON = new JButton();
+    private static final JButton ANNULLA_BUTTON = new JButton();
     private static final int MIN_WIDTH = 220; //ok_button.width + annulla_button.width + 30 (insects)
     private static final int MIN_HEIGHT = 40; //butto.height + 20 (insects)
 
@@ -20,7 +22,7 @@ abstract public class TempPanel {
     private static Vector<Pair<TempPanel_info, TempPanel_action>> queue = new Vector<>();
 
     private static JPanel temp_panel = null; //temp panel
-    private static JPanel txt_panel = new JPanel(); //pannello che contiene le txt area
+    private static final JPanel TXT_PANEL = new JPanel(); //pannello che contiene le txt area
     private static boolean visible = false;
 
     public static JPanel init() throws IOException {
@@ -28,27 +30,32 @@ abstract public class TempPanel {
             //imposta layout, background, border dei JPanel
             temp_panel = new JPanel();
             temp_panel.setLayout(new GridBagLayout());
-            txt_panel.setLayout(new GridBagLayout());
+            TXT_PANEL.setLayout(new GridBagLayout());
             temp_panel.setBackground(new Color(58, 61, 63));
-            txt_panel.setBackground(new Color(58, 61, 63));
+            TXT_PANEL.setBackground(new Color(58, 61, 63));
             temp_panel.setBorder(BorderFactory.createLineBorder(new Color(38, 41, 43)));
-            txt_panel.setBorder(null);
+            TXT_PANEL.setBorder(null);
 
             //inizializza i bottoni ok ed annulla
-            ok_button.setIcon(new ImageIcon(TempPanel.class.getResource("/images/ok.png")));
-            ok_button.setPressedIcon(new ImageIcon(TempPanel.class.getResource("/images/ok_pres.png")));
-            ok_button.setSelectedIcon(new ImageIcon(TempPanel.class.getResource("/images/ok_sel.png")));
-            annulla_button.setIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel.png")));
-            annulla_button.setPressedIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel_pres.png")));
-            annulla_button.setSelectedIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel_sel.png")));
+            OK_BUTTON.setIcon(new ImageIcon(TempPanel.class.getResource("/images/ok.png")));
+            OK_BUTTON.setPressedIcon(new ImageIcon(TempPanel.class.getResource("/images/ok_pres.png")));
+            OK_BUTTON.setSelectedIcon(new ImageIcon(TempPanel.class.getResource("/images/ok_sel.png")));
+            ANNULLA_BUTTON.setIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel.png")));
+            ANNULLA_BUTTON.setPressedIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel_pres.png")));
+            ANNULLA_BUTTON.setSelectedIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel_sel.png")));
 
-            ok_button.addActionListener(ok_listener);
-            annulla_button.addActionListener(annulla_listener);
+            OK_BUTTON.addActionListener(OK_LISTENER);
+            ANNULLA_BUTTON.addActionListener(annulla_listener);
 
-            ok_button.setBorder(null);
-            annulla_button.setBorder(null);
+            OK_BUTTON.setBorder(null);
+            ANNULLA_BUTTON.setBorder(null);
 
-            ok_button.addKeyListener(new KeyListener() {
+            OK_BUTTON.setOpaque(false);
+            ANNULLA_BUTTON.setOpaque(false);
+            OK_BUTTON.setContentAreaFilled(false);
+            ANNULLA_BUTTON.setContentAreaFilled(false);
+
+            OK_BUTTON.addKeyListener(new KeyListener() {
                 @Override
                 public void keyTyped(KeyEvent e) {}
                 @Override
@@ -57,10 +64,9 @@ abstract public class TempPanel {
                 @Override
                 public void keyPressed(KeyEvent e) {
                     if (e.getKeyCode() == 10) { //se viene premuto invio è come premere ok
-                        ok_button.doClick();
-                    } else if (annulla_button.isVisible() && e.getKeyCode() == 27) { //se viene premuto esc è come premere annulla
-                        System.out.println(annulla_button.isVisible());
-                        annulla_button.doClick();
+                        OK_BUTTON.doClick();
+                    } else if (ANNULLA_BUTTON.isVisible() && e.getKeyCode() == 27) { //se viene premuto esc è come premere annulla
+                        ANNULLA_BUTTON.doClick();
                     }
                 }
             });
@@ -75,7 +81,7 @@ abstract public class TempPanel {
             c.gridx = 0;
             c.gridy = 0;
             c.gridwidth = 2;
-            temp_panel.add(txt_panel, c);
+            temp_panel.add(TXT_PANEL, c);
 
             c.fill = GridBagConstraints.NONE;
             c.anchor = GridBagConstraints.FIRST_LINE_START;
@@ -83,12 +89,12 @@ abstract public class TempPanel {
             c.weighty = 0;
             c.gridy = 1;
             c.gridwidth = 1;
-            temp_panel.add(annulla_button, c);
+            temp_panel.add(ANNULLA_BUTTON, c);
 
             c.anchor = GridBagConstraints.FIRST_LINE_END;
             c.insets.left = 0;
             c.gridx = 1;
-            temp_panel.add(ok_button, c);
+            temp_panel.add(OK_BUTTON, c);
 
             //imposta il colore del background del testo selezionato
             UIManager.put("TextField.selectionBackground", new javax.swing.plaf.ColorUIResource(new Color(178, 191, 193)));
@@ -98,9 +104,18 @@ abstract public class TempPanel {
         return temp_panel;
     }
 
-    private static ActionListener ok_listener = e -> {
+    public static void recenter_in_frame() {
+        Rectangle frame_bounds = Godzilla_frame.get_bounds();
+
+        temp_panel.setLocation(
+                (int) (frame_bounds.getWidth()) / 2 - temp_panel.getWidth() / 2,
+                (int) (frame_bounds.getHeight()) / 2 - temp_panel.getHeight() / 2
+        );
+    }
+
+    private static final ActionListener OK_LISTENER = _ -> {
         Vector<String> input_txt = new Vector<>(); //copia tutti i testi contenuti nelle input area in questo array
-        while (input_array.size() != 0) {
+        while (!input_array.isEmpty()) {
             Component comp = input_array.elementAt(0);
             if (comp instanceof JTextField) {
                 input_txt.add(((JTextField) comp).getText());
@@ -126,7 +141,7 @@ abstract public class TempPanel {
         }
     };
 
-    private static final ActionListener annulla_listener = e -> {
+    private static final ActionListener annulla_listener = _ -> {
         input_array.removeAllElements(); //rimuove tutti gli input precedenti
 
         reset(); //resetta tutta la grafica e fa partire il prossimo in coda
@@ -143,7 +158,7 @@ abstract public class TempPanel {
                 TempPanel.action = action;
 
                 //imposta la visibilità del bottone annulla
-                annulla_button.setVisible(info.annulla_vis());
+                ANNULLA_BUTTON.setVisible(info.annulla_vis());
 
                 //distingue nei vari tipi di finestra
                 int panel_type = info.get_type();
@@ -176,16 +191,16 @@ abstract public class TempPanel {
         c.insets = new Insets(0, 0, 10, 10);
 
         for (int i = 0; i < txts.length; i++) {
-            NoEditTextArea line_area = new NoEditTextArea(txts[i]);
+            GTextArea line_area = new GTextArea(txts[i]);
 
             c.insets.bottom = (i == txts.length - 1)? 10 : 0;
-            txt_panel.add(line_area, c);
+            TXT_PANEL.add(line_area, c);
 
             c.gridy ++;
         }
 
-        show_panel(txt_panel.getPreferredSize().width + 20, txt_panel.getPreferredSize().height + 10); //rende visibile il pannello
-        ok_button.requestFocus(); //richiede il focus, in modo che se premuto invio appena il popup compare equivale a premere "ok"
+        show_panel(TXT_PANEL.getPreferredSize().width + 20, TXT_PANEL.getPreferredSize().height + 10); //rende visibile il pannello
+        OK_BUTTON.requestFocus(); //richiede il focus, in modo che se premuto invio appena il popup compare equivale a premere "ok"
     }
 
     private static void show_dual_con_msg(String[] txts) {
@@ -198,21 +213,21 @@ abstract public class TempPanel {
         c.insets = new Insets(0, 0, 10, 10);
 
         for (int i = 0; i < txts.length; i++) {
-            NoEditTextArea line_area1 = new NoEditTextArea(txts[i]);
-            NoEditTextArea line_area2 = new NoEditTextArea(txts[++i]);
+            GTextArea line_area1 = new GTextArea(txts[i]);
+            GTextArea line_area2 = new GTextArea(txts[++i]);
 
             c.insets.bottom = (i == txts.length - 1)? 10 : 0;
             c.gridx = 0;
-            txt_panel.add(line_area1, c);
+            TXT_PANEL.add(line_area1, c);
 
             c.gridx = 1;
-            txt_panel.add(line_area2, c);
+            TXT_PANEL.add(line_area2, c);
 
             c.gridy ++;
         }
 
-        show_panel(txt_panel.getPreferredSize().width + 20, txt_panel.getPreferredSize().height + 10); //rende visibile il pannello
-        ok_button.requestFocus(); //richiede il focus, in modo che se premuto invio appena il popup compare equivale a premere "ok"
+        show_panel(TXT_PANEL.getPreferredSize().width + 20, TXT_PANEL.getPreferredSize().height + 10); //rende visibile il pannello
+        OK_BUTTON.requestFocus(); //richiede il focus, in modo che se premuto invio appena il popup compare equivale a premere "ok"
     }
 
     private static void request_input(String[] requests, boolean request_psw, int[] req_types, TempPanel_info info) throws IOException {
@@ -225,14 +240,14 @@ abstract public class TempPanel {
         //genera e aggiunge al pannello txt_panel tutti le JTextArea
         for (c.gridy = 0; c.gridy < requests.length; c.gridy++) {
             //genera il JTextField che mostra il messaggio per richiedere l'input e lo aggiunge al pannello
-            NoEditTextArea msg_area = new NoEditTextArea(requests[c.gridy]);
+            GTextArea msg_area = new GTextArea(requests[c.gridy]);
             if (msg_area.getPreferredSize().width > max_width) {
                 max_width = msg_area.getPreferredSize().width;
             }
 
             c.weightx = 1;
             c.gridx = 0;
-            txt_panel.add(msg_area, c);
+            TXT_PANEL.add(msg_area, c);
 
             Component input_comp = null;
             //aggiunge il TextField dove poter inserire l'input richiesto
@@ -244,33 +259,36 @@ abstract public class TempPanel {
                 c.weightx = 0;
                 c.gridx = 1;
                 c.gridwidth = (request_psw)? 2 : 1; //se richiede delle password i campi di inserimento normali si estendono anche nella colonna del pulsante per mostrare il testo delle password
-                txt_panel.add(input_field, c);
+                TXT_PANEL.add(input_field, c);
 
                 c.gridwidth = 1; //resetta gridwidth
             }
             else if (req_types[c.gridy] == TempPanel_info.PASSWORD_REQUEST) { //richiede una password
-                PasswordField input_field = new PasswordField(c.gridy);
+                GPasswordField input_field = new GPasswordField();
+                input_field.addKeyListener(new Enter_listener(c.gridy));
                 input_comp = input_field;
 
                 //aggiunge al pannello PasswordField ed il pulsante per togglare la visibilità della scritta
                 c.weightx = 0;
                 c.gridx = 1;
                 c.insets.right = 3;
-                txt_panel.add(input_field, c);
+                TXT_PANEL.add(input_field, c);
 
                 c.gridx = 2;
                 c.insets.right = 10;
-                txt_panel.add(input_field.get_toggle_button(), c);
+                TXT_PANEL.add(input_field.get_toggle_button(), c);
             }
             else if (req_types[c.gridy] == TempPanel_info.COMBO_BOX_REQUEST) { //richiede una combo box
-                JComboBox<String> combo_box = new ComboBox(info.get_cbox_info(c.gridy), c.gridy);
+                JComboBox<String> combo_box = new GComboBox(info.get_cbox_info(c.gridy));
+                combo_box.addKeyListener(new Enter_listener(c.gridy));
+
                 input_comp = combo_box;
 
                 //aggiunge il combo box al pannello
                 c.weightx = 0;
                 c.gridx = 1;
                 c.gridwidth = (request_psw)? 2 : 1; //se richiede delle password ci si deve espandere nella colonna del pulsante per mostrare il testo delle password
-                txt_panel.add(combo_box, c);
+                TXT_PANEL.add(combo_box, c);
 
                 c.gridwidth = 1; //resetta gridwidth
             }
@@ -289,9 +307,9 @@ abstract public class TempPanel {
                 comp_height + MIN_HEIGHT
         );
 
-        //disattiva tutti i pannelli in Godzilla_frame e ricentra TempPanel
+        //disattiva tutti i pannelli in Godzilla_frame e ricentra gui.TempPanel
         Godzilla_frame.disable_panels();
-        Godzilla_frame.recenter_temp_panel();
+        recenter_in_frame();
 
         //mostra il pannello
         temp_panel.setVisible(true);
@@ -314,58 +332,17 @@ abstract public class TempPanel {
     private static void reset() {
         //resetta il pannello e lo rende invisibile
         visible = false;
-        annulla_button.setVisible(true);
+        ANNULLA_BUTTON.setVisible(true);
         temp_panel.setVisible(false);
-        txt_panel.removeAll();
+        TXT_PANEL.removeAll();
 
-        if (!queue.isEmpty()) //se c'è qualche elemento nella coda
-        {
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("TempPanel: la coda non è vuota\n", false); }
-
+        if (!queue.isEmpty()) { //se c'è qualche elemento nella coda
             Pair<TempPanel_info, TempPanel_action> next_in_queue = queue.elementAt(0); //mostra il prossimo elemento nella coda
             queue.removeElementAt(0);
             show(next_in_queue.el1, next_in_queue.el2);
         }
-        else //la coda è vuota
-        {
-            if (Database.DEBUG) { CentralTerminal_panel.terminal_write("TempPanel: la coda è vuota\n", false); }
+        else { //la coda è vuota
             Godzilla_frame.enable_panels(); //riattiva tutti i pannelli in Godzilla_frame
-        }
-    }
-
-    private static class NoEditTextArea extends JTextArea {
-        private static final int MAX_WIDTH = 600;
-        private static final int MAX_HEIGHT = 100;
-        private static final int LINE_HEIGHT = 17;
-        public NoEditTextArea(String txt) {
-            super(txt);
-
-            this.setBackground(new Color(58, 61, 63));
-            this.setBorder(null);
-            this.setFont(new Font("Charter Bd BT", Font.PLAIN, 13));
-            this.setForeground(new Color(188, 191,  193));
-
-            calculate_size();
-
-            this.setEditable(false);
-        }
-
-        private void calculate_size() {
-            if(this.getPreferredSize().width > MAX_WIDTH) {
-                this.setLineWrap(true);
-
-                FontMetrics fm = this.getFontMetrics(this.getFont());
-                this.setPreferredSize(new Dimension(
-                        MAX_WIDTH,
-                        (fm.stringWidth(this.getText()) / MAX_WIDTH + 1) * LINE_HEIGHT
-                ));
-            }
-            else {
-                this.setPreferredSize(new Dimension(
-                        this.getPreferredSize().width,
-                        Math.min(this.getPreferredSize().height, MAX_HEIGHT)
-                ));
-            }
         }
     }
 
@@ -387,233 +364,42 @@ abstract public class TempPanel {
             this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
             this.setMinimumSize(this.getPreferredSize());
 
-            this.addKeyListener(enter_list);
+            this.addKeyListener(new Enter_listener(index));
         }
-
-        private KeyListener enter_list = new KeyListener() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                if (e.getKeyCode() == 10) { //10 -> enter
-                    setText(getText().replaceAll("\n", "")); //rimuove la nuova linea
-
-                    try {
-                        Component input_cmp = input_array.elementAt(INDEX + 1);
-                        if (input_cmp instanceof JTextField) { //passa il focus all'input successivo
-                            ((JTextField) input_cmp).grabFocus();
-                        }
-                        else if (input_cmp instanceof JComboBox<?>) {
-                            ((JComboBox<?>) input_cmp).grabFocus();
-                        }
-                    } catch (Exception ex) { //se non esiste un input con index > di questo
-                        ok_button.doClick(); //simula il tasto "ok"
-                    }
-                }
-                else if (e.getKeyCode() == 27) { //27 -> esc
-                    if (annulla_button.isVisible()) {
-                        annulla_button.doClick();
-                    }
-                }
-            }
-            @Override
-            public void keyTyped(KeyEvent e) {}
-
-            @Override
-            public void keyPressed(KeyEvent e) {}
-        };
     }
 
-    private static class PasswordField extends JPasswordField {
-        private static final int WIDTH  = 127;
-        private static final int HEIGHT = 20;
-
-        private JButton toggle_button = null;
-        private static ImageIcon[] eye_icons = new ImageIcon[] {
-                new ImageIcon(TempPanel.class.getResource("/images/eye.png")),
-                new ImageIcon(TempPanel.class.getResource("/images/eye_pres.png")),
-                new ImageIcon(TempPanel.class.getResource("/images/eye_sel.png"))
-
-        };
-        private static ImageIcon[] no_eye_icons = new ImageIcon[] {
-                new ImageIcon(TempPanel.class.getResource("/images/no_eye.png")),
-                new ImageIcon(TempPanel.class.getResource("/images/no_eye_pres.png")),
-                new ImageIcon(TempPanel.class.getResource("/images/no_eye_sel.png"))
-        };
-
-        private final int INDEX;
-        private boolean clear_text = false;
-
-        public PasswordField(int index) {
-            super();
-            this.INDEX = index;
-
-            this.setBackground(new Color(108, 111, 113));
-            this.setBorder(BorderFactory.createLineBorder(new Color(68, 71, 73)));
-            this.setFont(new Font("Arial", Font.BOLD, 14));
-            this.setForeground(new Color(218, 221, 223));
-
-            this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
-            this.setMinimumSize(this.getPreferredSize());
-
-            this.setEchoChar('*'); //nasconde il testo
-            gen_toggle_button(); //genera il pulsante per togglare la visibilità del testo
-
-            this.addKeyListener(enter_list);
-        }
-
-        public JButton get_toggle_button() {
-            return toggle_button;
-        }
-
-        private void gen_toggle_button() { //genera un pulsante che premuto toggla la visibilità del testo
-            toggle_button = new JButton();
-
-            //inizializza la grafica del pulsante con le icone dell'occhio senza la barra
-            toggle_button.setIcon(eye_icons[0]);
-            toggle_button.setPressedIcon(eye_icons[1]);
-            toggle_button.setRolloverIcon(eye_icons[2]);
-
-            toggle_button.setBorder(null);
-
-            //aggiunge action listener e ritorna il pulsante
-            toggle_button.addActionListener(toggle_list);
-        }
-
-        private ActionListener toggle_list = e -> {
-            if (clear_text) //se in questo momento il testo si vede in chiaro
-            {
-                setEchoChar('*'); //nasconde il testo
-
-                //modifica le icone del pulsante
-                toggle_button.setIcon(eye_icons[0]);
-                toggle_button.setPressedIcon(eye_icons[1]);
-                toggle_button.setRolloverIcon(eye_icons[2]);
-            }
-            else //se in questo momeno il testo è nascosto
-            {
-                setEchoChar((char) 0); //mostra il testo
-
-                //modifica le icone del pulsante
-                toggle_button.setIcon(no_eye_icons[0]);
-                toggle_button.setPressedIcon(no_eye_icons[1]);
-                toggle_button.setRolloverIcon(no_eye_icons[2]);
-            }
-
-            clear_text = !clear_text;
-        };
-
-        private KeyListener enter_list = new KeyListener() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                if (e.getKeyCode() == 10) { //10 -> enter
-                    setText(getText().replaceAll("\n", "")); //rimuove la nuova linea
-
-                    try {
-                        Component input_cmp = input_array.elementAt(INDEX + 1);
-                        if (input_cmp instanceof JTextField) { //passa il focus all'input successivo
-                            ((JTextField) input_cmp).grabFocus();
-                        }
-                        else if (input_cmp instanceof JComboBox<?>) {
-                            ((JComboBox<?>) input_cmp).grabFocus();
-                        }
-                    } catch (Exception ex) { //se non esiste un input con index > di questo
-                        ok_button.doClick(); //simula il tasto "ok"
-                    }
-                }
-                else if (e.getKeyCode() == 27) { //27 -> esc
-                    if (annulla_button.isVisible()) {
-                        annulla_button.doClick();
-                    }
-                }
-            }
-            @Override
-            public void keyTyped(KeyEvent e) {}
-
-            @Override
-            public void keyPressed(KeyEvent e) {}
-        };
-    }
-
-    private static class ComboBox extends JComboBox<String> {
+    private static class Enter_listener implements KeyListener {
         private final int INDEX;
 
-
-        public ComboBox(String[] list, int index) {
-            super(list);
-
+        public Enter_listener(int index) {
             this.INDEX = index;
-
-            this.setBackground(new Color(108, 111, 113));
-            this.setForeground(new Color(218, 221, 223));
-            this.setBorder(BorderFactory.createLineBorder(new Color(68, 71, 73)));
-            this.setPreferredSize(new Dimension(100, 25));
-
-            ComboBoxRenderer renderer = new ComboBoxRenderer();
-            renderer.setPreferredSize(new Dimension(100, 16));
-            renderer.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
-            this.setRenderer(renderer);
-
-            this.addKeyListener(enter_list);
         }
 
-        static class ComboBoxRenderer extends JLabel implements ListCellRenderer<String> {
-            boolean list_init = true;
-
-            public ComboBoxRenderer() {
-                setOpaque(true);
-                setHorizontalAlignment(CENTER);
-                setVerticalAlignment(CENTER);
+        @Override
+        public void keyReleased(KeyEvent e) {
+            if (e.getKeyCode() == 10) { //10 -> enter
+                try {
+                    Component input_cmp = input_array.elementAt(INDEX + 1);
+                    if (input_cmp instanceof JTextField) { //passa il focus all'input successivo
+                        ((JTextField) input_cmp).grabFocus();
+                    }
+                    else if (input_cmp instanceof JComboBox<?>) {
+                        ((JComboBox<?>) input_cmp).grabFocus();
+                    }
+                } catch (Exception ex) { //se non esiste un input con index > di questo
+                    OK_BUTTON.doClick(); //simula il tasto "ok"
+                }
             }
-
-            @Override
-            public Component getListCellRendererComponent(JList<? extends String> list, String value, int index, boolean isSelected, boolean cellHasFocus) {
-                if (list_init) { //setta
-                    list.setSelectionBackground(new Color(108, 111, 113));
-                    list.setSelectionForeground(new Color(218, 221, 223));
-
-                    list_init = false;
+            else if (e.getKeyCode() == 27) { //27 -> esc
+                if (ANNULLA_BUTTON.isVisible()) {
+                    ANNULLA_BUTTON.doClick();
                 }
-
-                if (isSelected) {
-                    setBackground(new Color(158, 161, 163));
-                }
-                else {
-                    setBackground(new Color(108, 111, 113));
-                }
-
-                setText(value);
-
-                return this;
             }
         }
+        @Override
+        public void keyTyped(KeyEvent e) {}
 
-        private KeyListener enter_list = new KeyListener() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                if (e.getKeyCode() == 10) { //10 -> enter
-                    try {
-                        Component input_cmp = input_array.elementAt(INDEX + 1);
-                        if (input_cmp instanceof JTextField) { //passa il focus all'input successivo
-                            ((JTextField) input_cmp).grabFocus();
-                        }
-                        else if (input_cmp instanceof JComboBox<?>) {
-                            ((JComboBox<?>) input_cmp).grabFocus();
-                        }
-                    } catch (Exception ex) { //se non esiste un input con index > di questo
-                        ok_button.doClick(); //simula il tasto "ok"
-                    }
-                }
-                else if (e.getKeyCode() == 27) { //27 -> esc
-                    if (annulla_button.isVisible()) {
-                        annulla_button.doClick();
-                    }
-                }
-            }
-            @Override
-            public void keyTyped(KeyEvent e) {}
-
-            @Override
-            public void keyPressed(KeyEvent e) {}
-        };
+        @Override
+        public void keyPressed(KeyEvent e) {}
     }
-
 }
