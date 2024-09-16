@@ -114,18 +114,21 @@ abstract public class TempPanel {
     }
 
     private static final ActionListener OK_LISTENER = _ -> {
-        Vector<String> input_txt = new Vector<>(); //copia tutti i testi contenuti nelle input area in questo array
-        while (!input_array.isEmpty()) {
-            Component comp = input_array.elementAt(0);
-            if (comp instanceof JTextField) {
+        //copia tutti i testi contenuti nelle input area in questo array, utilizza Object perchè per le password non sono String ma char[]
+        Vector<Object> input_txt = new Vector<>();
+
+        for (Component comp : input_array) {
+            if (comp instanceof JPasswordField) {
+                input_txt.add(((JPasswordField) comp).getPassword());
+            }
+            else if (comp instanceof JTextField) {
                 input_txt.add(((JTextField) comp).getText());
-                input_array.removeElementAt(0);
             }
             else if (comp instanceof JComboBox) {
-                input_txt.add((String)((JComboBox<?>) comp).getSelectedItem());
-                input_array.removeElementAt(0);
+                input_txt.add(((JComboBox<?>) comp).getSelectedItem());
             }
         }
+        input_array.clear();
 
         TempPanel_action action = TempPanel.action; //memorizza l'azione da eseguire per questo panel
         reset(); //resetta tutta la grafica e fa partire il prossimo in coda
@@ -134,6 +137,7 @@ abstract public class TempPanel {
             if (input_txt.isEmpty() || valid_input(input_txt)) { //se è un messaggio, o se richiede un input ed è stato inserito testo valido
                 action.input.removeAllElements();
                 action.input.addAll(input_txt); //fa partire il codice con tutti gli input ricavati
+
                 new Thread(action::success).start();
             } else { //se non è stato inserito un input valido
                 new Thread(action::fail).start();
@@ -317,15 +321,20 @@ abstract public class TempPanel {
         visible = true;
     }
 
-    private static boolean valid_input(Vector<String> inputs) { //controlla che nessun campo di input sia stato lasciato vuoto o con solo uno spazio/a capo
-        for (String txt : inputs)
-        {
-            txt = txt.replaceAll("[ \n]", ""); //rimuove tutti gli spazi e \n
-
-            if (txt.isEmpty()) {
-                return false;
+    private static boolean valid_input(Vector<Object> inputs) { //controlla che nessun campo di input sia stato lasciato vuoto o con solo uno spazio/a capo
+        for (Object obj : inputs) {
+            if (obj instanceof String str) { //controlla che nessuna stringa sia solamente spazi o \n
+                if (str.replaceAll("[ \n]", "").isEmpty()) {
+                    return false;
+                }
+            }
+            else if (obj instanceof char[] psw) { //controlla che ogni password non abbia lunghezza 0
+                if (psw.length == 0) {
+                    return false;
+                }
             }
         }
+
         return true;
     }
 

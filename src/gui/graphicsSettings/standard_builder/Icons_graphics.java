@@ -35,21 +35,21 @@ public class Icons_graphics implements GraphicsOption_builder<ButtonIcons> {
             std_icon = image_graphics.cast(matcher.group(1));
 
             if (std_icon == null) {
-                Logger.log("impossibile inizializzare l'icona standard dalle info: " + value_str, true, '\n');
+                Logger.log("impossibile inizializzare l'icona standard dalle info: " + value_str, true);
                 return null;
             }
 
             roll_icon = image_graphics.cast(matcher.group(2));
 
             if (roll_icon == null) {
-                Logger.log("impossibile inizializzare l'icona rollover dalle info: " + value_str, true, '\n');
+                Logger.log("impossibile inizializzare l'icona rollover dalle info: " + value_str, true);
                 return null;
             }
 
             press_icon = image_graphics.cast(matcher.group(3));
 
             if (press_icon == null) {
-                Logger.log("impossibile inizializzare l'icona pressed dalle info: " + value_str, true, '\n');
+                Logger.log("impossibile inizializzare l'icona pressed dalle info: " + value_str, true);
                 return null;
             }
 
@@ -57,7 +57,7 @@ public class Icons_graphics implements GraphicsOption_builder<ButtonIcons> {
             dis_icon = image_graphics.cast(matcher.group(4));
 
             if (dis_icon == null) {
-                Logger.log("impossibile inizializzare l'icona disabled dalle info: " + value_str, true, '\n');
+                Logger.log("impossibile inizializzare l'icona disabled dalle info: " + value_str, true);
                 return null;
             }
 

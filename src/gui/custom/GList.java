@@ -2,7 +2,7 @@ package gui.custom;
 
 import files.Database;
 import files.Pair;
-import network.Server;
+import network.Server_manager;
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
@@ -231,8 +231,8 @@ public class GList extends JPanel {
                         break;
 
                     case 10: //invio, si collega a questo server
-                        Pair<String, String> server_info = Database.serverList.get(getText());
-                        Server.start_connection_with(server_info.el1, server_info.el2);
+                        String server_name = getText();
+                        Server_manager.connect_to(server_name);
                         break;
                 }
             }

@@ -2,13 +2,12 @@ package gui;
 
 import files.Database;
 import files.Logger;
-import files.Pair;
 import gui.custom.GList;
 import gui.custom.GScrollPane;
 import gui.graphicsSettings.ButtonIcons;
 import gui.graphicsSettings.GraphicsSettings;
-import network.Connection;
-import network.Server;
+import network.Server_info;
+import network.Server_manager;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -17,7 +16,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Base64;
 import java.util.regex.Pattern;
 
 public abstract class ServerList_panel extends Database {
@@ -145,7 +143,7 @@ public abstract class ServerList_panel extends Database {
     }
 
     public static void setEnabled(boolean enabled) {
-        if (Connection.isClosed()) { //se non è connesso a nessun server il pulsante disconnect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
+        if (Server_manager.is_connected()) { //se non è connesso a nessun server il pulsante disconnect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
             connect.setEnabled(enabled);
         }
         else { //se è connesso ad un server il pulsante connect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
@@ -157,7 +155,7 @@ public abstract class ServerList_panel extends Database {
     }
 
     public static void update_gui() {
-        for (String name : Database.serverList.keySet()) { //aggiunge alla lista tutti i server caricati sul database
+        for (String name : Database.server_list.keySet()) { //aggiunge alla lista tutti i server caricati sul database
             server_list.add(name);
         }
     }
@@ -168,76 +166,114 @@ public abstract class ServerList_panel extends Database {
 
     public static void update_button_enable() {
         if (Godzilla_frame.enabled()) { //se i pulsanti dovrebbero essere attivi
-            connect.setEnabled(Connection.isClosed());
-            disconnect.setEnabled(!Connection.isClosed());
+            connect.setEnabled(Server_manager.is_connected());
+            disconnect.setEnabled(!Server_manager.is_connected());
         }
     }
 
     private static final ActionListener ADDSERVER_LISTENER = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            ERROR_ACTION.success();
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.INPUT_REQ,
+                    true,
+                    "link:",
+                    "porta:",
+                    "nome:",
+                    "encoder:",
+                    "indirizzo ip del dns:"
+            ).set_combo_box(
+                    new int[] {3, 4},
+                    Server_manager.get_encoders_list(),
+                    Database.dns_ca_key.keySet().toArray(new String[0])
+            ), ADD_SERVER_ACTION);
         }
 
         private final TempPanel_action ADD_SERVER_ACTION = new TempPanel_action() {
             @Override
             public void success()  {
+                String link = (String) input.elementAt(0);
+                String ip = null;
+                String port_str = (String) input.elementAt(1);
+                int port;
+                String name = (String) input.elementAt(2);
+                String encoder = (String) input.elementAt(3);
+                String dns_ip = (String) input.elementAt(4);
+
+                try {
+                    port = Integer.parseInt(port_str);
+                }
+                catch (NumberFormatException _) { //non è stato inserito un numero per porta
+                    Logger.log("tentativo di aggiungere un server con come porta una stringa: " + port_str, true);
+
+                    TempPanel.show(new TempPanel_info(
+                            TempPanel_info.SINGLE_MSG,
+                            false,
+                            "inserire un numero valido come valore per la porta"
+                    ), null);
+
+                    fail();
+
+                    return;
+                }
+
+                //se è stato specificato un ip e non il link del server
                 Pattern ip_pattern = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
+                if (ip_pattern.matcher(link).matches()) {
+                    ip = link;
+                    link = null;
+                }
 
-                String server_link = input.elementAt(0);
-                String server_name = input.elementAt(1);
-                String dns_ip = input.elementAt(2);
+                //crea l'oggetto con le informazioni del server
+                Server_info info = new Server_info(link, ip, port, dns_ip, encoder);
 
-                if (valid_server_name(server_name) && (ip_pattern.matcher(server_link).matches() || valid_server_link(server_link))) {
-                    Database.serverList.put(server_name, new Pair<>(server_link, dns_ip)); //aggiunge indirizzo e nome alla mappa serverList
-                    server_list.add(server_name); //aggiunge il nome del server alla JList rendendolo visibile
-                } else {
-                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "il nome o indirizzo inseriti non sono validi, inserire nome ed indirizzo validi"), ERROR_ACTION);
+                if (valid_server_name(name) && (link == null || valid_server_link(link))) {
+                    //aggiunge il nuovo server al database e alla lista in ServerList_panel
+                    Database.server_list.put(name, info);
+                    server_list.add(name); //aggiunge il nome del server alla JList rendendolo visibile
+                }
+                else {
+                    TempPanel.show(new TempPanel_info(
+                            TempPanel_info.SINGLE_MSG,
+                            false,
+                            "il nome o indirizzo inseriti non sono validi, inserire nome ed indirizzo validi"
+                    ), null);
+
+                    fail();
                 }
             }
 
             @Override
-            public void fail() {} //non si vuole più aggiungere un server
-        };
-
-        private final TempPanel_action ERROR_ACTION = new TempPanel_action() {
-            @Override
-            public void success() {
+            public void fail() {
                 TempPanel.show(new TempPanel_info(
                         TempPanel_info.INPUT_REQ,
                         true,
                         "inserisci il link al server:",
                         "inserisci il nome del server:",
-                        "inserisci l'ip del dns:"
+                        "inserisci l ip del dns:"
                 ).set_combo_box(
                         new int[] {2},
-                        Database.DNS_CA_KEY.keySet().toArray(new String[0])
+                        Database.dns_ca_key.keySet().toArray(new String[0])
                 ), ADD_SERVER_ACTION);
             }
-
-            @Override
-            public void fail() {} //essendo un messaggio non può essere premuto il tasto "annulla"
         };
-
     };
 
     private static final ActionListener CONNECT_LISTENER = _ -> {
-        Pair<String, String> server_info = Database.serverList.get(server_list.getSelectedValue());
-        if (server_info != null) { //se è effttivamente selezionato un server
-            String link = server_info.el1;
+        String server_name = server_list.getSelectedValue();
+        if (!server_name.isEmpty()) { //se è effettivamente selezionato un server
+            Logger.log("tento la connessione con il server: " + server_name);
 
-            Logger.log("tento la connessione con il server: " + link);
-            Server.start_connection_with(link, server_info.el2);
-            Server.server_name = server_list.getSelectedValue();
+            Server_manager.connect_to(server_name);
         }
     };
 
     private static final ActionListener disconnect_listener = _ -> {
-        Server.disconnect(true);
+        Server_manager.close(true);
     };
 
     private static boolean valid_server_name(String new_server_name) { //controlla che il nome assegnato al server sia unico
-        for (String name : Database.serverList.keySet()) {
+        for (String name : Database.server_list.keySet()) {
             if (name.equals(new_server_name)) {
                 return false;
             }
@@ -294,19 +330,32 @@ public abstract class ServerList_panel extends Database {
         private final TempPanel_action RENAME_ACTION = new TempPanel_action() {
             @Override
             public void success() {
-                if (valid_server_name(input.elementAt(0)) && !input.elementAt(0).equals(cell_name)) {
-                    Logger.log("rinomino il server \"" + cell_name + "\" in \"" + input.elementAt(0) + "\"");
-                    PARENT_LIST.rename_element(cell_name, input.elementAt(0)); //modifica il nome nella lista visibile
+                String new_name = (String) input.elementAt(0);
 
-                    Database.serverList.put( //modifica il nome nel database
-                            input.elementAt(0),
-                            Database.serverList.get(cell_name)
+                if (valid_server_name(new_name) && !new_name.equals(cell_name)) {
+                    Logger.log("rinomino il server: " + cell_name + " in: " + new_name);
+                    PARENT_LIST.rename_element(cell_name, new_name); //modifica il nome nella lista visibile
+
+                    //rinomina il server nella lista Database.server_list
+                    Database.server_list.put(
+                            new_name,
+                            Database.server_list.get(cell_name)
                     );
-                    Database.serverList.remove(cell_name);
+                    Database.server_list.remove(cell_name);
 
-                    cell_name = input.elementAt(0); //modifica il nome per questo popup
+                    cell_name = new_name; //modifica il nome per questo popup
                 } else {
-                    TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "inserisci un nome valido ed unico fra tutti i server"), RENAME_FAIL_ACTION);
+                    TempPanel.show(new TempPanel_info(
+                            TempPanel_info.SINGLE_MSG,
+                            false,
+                            "inserisci un nome valido ed unico fra tutti i server"
+                    ), null);
+
+                    TempPanel.show(new TempPanel_info(
+                            TempPanel_info.INPUT_REQ,
+                            true,
+                            "inserisci il nuovo nome per il server: " + cell_name
+                    ), RENAME_ACTION);
                 }
             }
 
@@ -314,22 +363,12 @@ public abstract class ServerList_panel extends Database {
             public void fail() {} //non si vuole più rinominare il server
         };
 
-        private final TempPanel_action RENAME_FAIL_ACTION = new TempPanel_action() {
-            @Override
-            public void success() {
-                TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci il nuovo nome per il server: " + cell_name), RENAME_ACTION);
-            }
-
-            @Override
-            public void fail() {} //essendo un messaggio non può "fallire"
-        };
-
-        private final TempPanel_action RENAME_CONFIRM_ACTION = new TempPanel_action() {
+        private final TempPanel_action REMOVE_CONFIRM_ACTION = new TempPanel_action() {
             @Override
             public void success() {
                 Logger.log("rimuovo il server: " + cell_name + " dalla lista dei server memorizzati");
 
-                Database.serverList.remove(cell_name); //rimuove il server dal database
+                Database.server_list.remove(cell_name); //rimuove il server dal database
                 PARENT_LIST.remove(cell_name); //rimuove il server dalla lista visibile
             }
 
@@ -338,41 +377,34 @@ public abstract class ServerList_panel extends Database {
         };
 
         private final ActionListener RENAME_LISTENER = _ -> {
-            TempPanel.show(new TempPanel_info(TempPanel_info.INPUT_REQ, true, "inserisci il nuovo nome per il server: " + cell_name), RENAME_ACTION);
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.INPUT_REQ,
+                    true,
+                    "inserisci il nuovo nome per il server: " + cell_name
+            ), RENAME_ACTION);
         };
 
         private final ActionListener REMOVE_LISTENER = _ -> {
-            TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, true, "il server " + cell_name + " verrà rimosso"), RENAME_CONFIRM_ACTION);
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.SINGLE_MSG,
+                    true,
+                    "il server " + cell_name + " verrà rimosso"
+            ), REMOVE_CONFIRM_ACTION);
         };
 
         private final ActionListener INFO_LISTENER = _ -> {
-            Pair<String, String> server_info = Database.serverList.get(cell_name);
-            String ip_link = server_info.el1; //trova il link o l'ip del server a cui si riferisce questa casella
-            String dns_ip = server_info.el2;
+            Server_info info = Database.server_list.get(cell_name);
 
-            if (Server.ip.equals(ip_link) || Server.link.equals(ip_link)) { //se è connesso a questo server
-                TempPanel.show(new TempPanel_info(
-                        TempPanel_info.DOUBLE_COL_MSG,
-                        false,
-                        "dns registered name:", Server.registered_name,
-                        "client name:", cell_name,
-                        "ip:", Server.ip,
-                        "link:", Server.link,
-                        "mai:", Server.mail,
-                        "dns link:", Server.dns_ip,
-                        "pubblic key:", Base64.getEncoder().encodeToString(Server.pub_key),
-                        "certificate:", Base64.getEncoder().encodeToString(Server.ce)
-                ), null);
-            }
-            else { //se non è connesso a questo server le uniche informazioni che conosce sono nome e link/ip/dns_ip
-                TempPanel.show(new TempPanel_info(
-                        TempPanel_info.DOUBLE_COL_MSG,
-                        false,
-                        "name:", cell_name,
-                        "link:", ip_link,
-                        "dns ip:", dns_ip
-                ), null);
-            }
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.DOUBLE_COL_MSG,
+                    false,
+                    "nome:", cell_name,
+                    "ip:", (info.get_ip() == null)? "not defined" : info.get_ip(),
+                    "link:", (info.get_link() == null)? "not defined" : info.get_link(),
+                    "porta:", Integer.toString(info.get_port()),
+                    "dns ip:", info.get_dns_ip(),
+                    "encoder:", info.get_encoder_name()
+            ), null);
         };
     }
 }

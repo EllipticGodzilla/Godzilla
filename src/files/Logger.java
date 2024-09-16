@@ -9,6 +9,9 @@ public abstract class Logger {
     public static void log(String txt) {
         log(txt, false, '\n');
     }
+    public static void log(String txt, boolean error) {
+        log(txt, error, '\n');
+    }
 
     public static void log(String txt, boolean error, char end) {
         LOG_BUILDER.append(error? "! " : "  ")

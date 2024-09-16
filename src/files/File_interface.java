@@ -1,9 +1,11 @@
 package files;
 
 import gui.*;
+import network.Server_info;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -52,29 +54,39 @@ public abstract class File_interface extends Database {
 
     private static void init_file_updater() {
         file_updater.add(() -> { //aggiorna tutti i file standard
-            //salva la lista dei server memorizzati
+            //genera il testo da salvare nel file da tutti i server registrati in Database.server_list
             StringBuilder server_list = new StringBuilder();
-            for (String key : Database.serverList.keySet()) {
-                Pair<String, String> s_info = Database.serverList.get(key);
-                server_list.append( key )
+            for (String key : Database.server_list.keySet()) {
+                Server_info info = Database.server_list.get(key);
+
+                server_list
+                        .append( key )
+                        .append( ":" )
+                        .append( (info.get_link() == null)? "" : info.get_link() )
                         .append( ";" )
-                        .append( s_info.el1 ) //server link/ip
+                        .append( (info.get_ip() == null)? "" : info.get_ip() )
                         .append( ";" )
-                        .append( s_info.el2 ) //dns ip
+                        .append( info.get_port() )
+                        .append( ";" )
+                        .append( info.get_dns_ip() )
+                        .append( ";" )
+                        .append( info.get_encoder_name() )
                         .append( "\n" );
             }
 
+            //riscrive tutte le informazioni nel file con le nuove
             File_interface.overwrite_file("database/ServerList.dat", server_list.toString());
 
-            //salva la lista di dns registrati
+            //genera il testo da scrivere nel file da tutti i dns salvati in Database.dns_ca_key
             StringBuilder dns_list = new StringBuilder();
-            for (String ip : Database.DNS_CA_KEY.keySet()) { //per ogni dns riconosciuto
+            for (String ip : Database.dns_ca_key.keySet()) { //per ogni dns riconosciuto
                 dns_list.append( ip )
-                        .append( ";" )
-                        .append( Database.DNS_CA_KEY.get(ip).el2 )
-                        .append( "\n" ); //aggiunge al file la linea ip;Base64(pub_key)
+                        .append( ":" )
+                        .append( Database.dns_ca_key.get(ip).el2 )
+                        .append( "\n" );
             }
 
+            //riscrive tutte le informazioni salvate nel file con le nuve
             File_interface.overwrite_file("database/DNS_CA_list.dat", dns_list.toString());
 
             //salva i log nel terminale
@@ -103,7 +115,7 @@ public abstract class File_interface extends Database {
         }
         Logger.log("memorizzati tutti i dns registrati");
 
-        if (!Database.DNS_CA_KEY.isEmpty()) { //se conosce almeno un dns
+        if (!Database.dns_ca_key.isEmpty()) { //se conosce almeno un dns
             init_server_list();
         }
         else { //se non ne conosce nessuno richiede prima di aggiungerne
@@ -113,8 +125,8 @@ public abstract class File_interface extends Database {
 
     public static void reload_from_disk() {
         if (initialized) {
-            Database.DNS_CA_KEY.clear(); //rimuove tutti i DNS/CA memorizzati
-            Database.serverList.clear(); //rimuove tutti i server memorizzati
+            Database.dns_ca_key.clear(); //rimuove tutti i DNS/CA memorizzati
+            Database.server_list.clear(); //rimuove tutti i server memorizzati
 
             close(); //chiude tutti i file e svuola la mappa files
             files.clear();
@@ -192,7 +204,7 @@ public abstract class File_interface extends Database {
             decoder.init(Cipher.DECRYPT_MODE, key);
 
             //memorizza la connessione dns_ip -> (cipher, pub_key)
-            Database.DNS_CA_KEY.put(ip, new Pair<>(decoder, key_b64));
+            Database.dns_ca_key.put(ip, new Pair<>(decoder, key_b64));
         }
         catch (InvalidKeySpecException | InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException _) {} //exception ignorate
     }
@@ -201,18 +213,19 @@ public abstract class File_interface extends Database {
         @Override
         public void success() {
             try {
-                Pattern ip_patt = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
-                Matcher match = ip_patt.matcher(input.elementAt(0));
+                String dns_ip = (String) input.elementAt(0);
+                String base64_pKey = (String) input.elementAt(1);
 
-                if (!match.find()) { //se non è un ip
+                //controlla che l'indirizzo ip sia formattato correttamente
+                Pattern ip_patt = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
+                Matcher match = ip_patt.matcher(dns_ip);
+
+                if (!match.find()) { //se non è stato inserito correttamente
                     retry();
-                } else { //è stato inserito un indirizzo ip, controlla la chiave pubblica
-                    if (input.elementAt(1).isEmpty()) { //controlla solo che sia stato effettivamente inserito qualcosa
-                        retry();
-                    } else { //input validi!
-                        add_dns_ca_key(input.elementAt(0), input.elementAt(1)); //aggiunge il nuovo dns
-                        init_server_list();
-                    }
+                }
+                else {
+                    add_dns_ca_key(dns_ip, base64_pKey);
+                    init_server_list();
                 }
             }
             catch (Exception e) {
@@ -237,7 +250,7 @@ public abstract class File_interface extends Database {
         public void success() {
             TempPanel.show(new TempPanel_info(
                     TempPanel_info.INPUT_REQ,
-                    !Database.DNS_CA_KEY.isEmpty(), //se sta aggiungendo un nuovo dns mostra annulla, altrimenti no
+                    !Database.dns_ca_key.isEmpty(), //se sta aggiungendo un nuovo dns mostra annulla, altrimenti no
                     "indirizzo ip del dns:",
                     "chiave pubblica della CA:"
             ), ADD_DNSCA_ACTION);
@@ -251,23 +264,49 @@ public abstract class File_interface extends Database {
         Logger.log("apro il file database/ServerList.dat con la lista di server memorizzati");
         /*
          * il testo è formattato in questo modo:
-         * <nome1>;<indirizzo1>
-         * <nome2>;<indirizzo2>
+         * <nome1>:<indirizzo1>;<ip1>;<porta1>;<dns_ip1>;<encoder1>
+         * <nome2>:<indirizzo2>;<ip2>;<porta2>;<dns_ip2>;<encoder2>
          * ...
          * ...
-         *
-         * viene diviso ad ogni ';' o '\n' ricavando un array:
-         * {<nome1>, <indirizzo1>, <nome2>, <indirizzo2>, ...}
-         * che poi verrà inserito nel database
          */
-        String server_list = read_file("database/ServerList.dat");
+        String file_content = read_file("database/ServerList.dat");
 
-        Pattern p = Pattern.compile("[;\n]");
-        String[] info = p.split(server_list);
+        if (file_content == null) {
+            Logger.log("impossibile leggere il contenuto del file ServerList.dat", true);
+            initialized = true;
 
-        if (info.length != 1) { //il file è vuoto, Pattern.split("") ritorna un array con un solo elemento vuoto
-            for (int i = 0; i < info.length; i += 3) {
-                Database.serverList.put(info[i], new Pair<>(info[i+1], info[i+2]));
+            return;
+        }
+
+        if (!file_content.isEmpty()) { //se è contenuto qualcosa nel file
+            Pattern line_pattern = Pattern.compile("([^:]+):([^;]+);([^;]+);([^;]+);([^;]+);([^;]+)");
+            String[] lines = file_content.split("\n");
+
+            for (String line : lines) {
+                Matcher matcher = line_pattern.matcher(line);
+
+                //la linea non è formattata in modo corretto
+                if (!matcher.matches()) {
+                    Logger.log("impossibile comprendere la linea: " + line + " nel file ServerList.dat", true);
+                }
+                else {
+                    try {
+                        String name = matcher.group(1);
+                        Server_info info = new Server_info(
+                                (matcher.group(2).isEmpty()) ? null : matcher.group(1),
+                                (matcher.group(3).isEmpty()) ? null : matcher.group(2),
+                                Integer.parseInt(matcher.group(4)),
+                                matcher.group(5),
+                                matcher.group(6)
+                        );
+
+                        Database.server_list.put(name, info);
+                        Logger.log("aggiunto un nuovo server alla lista: " + name);
+                    }
+                    catch (NumberFormatException _) {
+                        Logger.log("impossibile comprendere il numero della porta nella linea: " + line + " nel file ServerList.dat", true);
+                    }
+                }
             }
 
             ServerList_panel.update_gui();
@@ -283,7 +322,7 @@ public abstract class File_interface extends Database {
         SecureFile file = files.get(name);
 
         if (file == null) {
-            Logger.log("impossibile leggere il file: " + name + ", file non esistente", true, '\n');
+            Logger.log("impossibile leggere il file: " + name + ", file non esistente", true);
             return -1;
         }
         else {
@@ -295,7 +334,7 @@ public abstract class File_interface extends Database {
         SecureFile file = files.get(name);
 
         if (file == null) {
-            Logger.log("impossibile leggere il contenuto del file: " + name + ", file non esistente", true, '\n');
+            Logger.log("impossibile leggere il contenuto del file: " + name + ", file non esistente", true);
             return null;
         }
         else {
@@ -313,7 +352,7 @@ public abstract class File_interface extends Database {
         SecureFile file = files.get(name);
 
         if (file == null) {
-            Logger.log("impossibile aggiungere il testo: " + txt + " al file: " + name + ", file non esistente", true, '\n');
+            Logger.log("impossibile aggiungere il testo: " + txt + " al file: " + name + ", file non esistente", true);
         }
         else {
             file.append(txt);
@@ -324,7 +363,7 @@ public abstract class File_interface extends Database {
         SecureFile file = files.get(name);
 
         if (file == null) {
-            Logger.log("impossibile impostare: \"" + txt + "\" come contenuto del file: " + name + ", il file non esiste", true, '\n');
+            Logger.log("impossibile impostare: \"" + txt + "\" come contenuto del file: " + name + ", il file non esiste", true);
         }
         else {
             file.replace(txt);
@@ -333,14 +372,14 @@ public abstract class File_interface extends Database {
 
     public static void create_file(String name, boolean encoded) {
         if (files.containsKey(name)) //se esiste già un file con questo nome
-            Logger.log("impossibile creare il file: " + name + ", esiste già un file con questo nome", true, '\n');
+            Logger.log("impossibile creare il file: " + name + ", esiste già un file con questo nome", true);
 
         files.put(name, new SecureFile(jar_path + "/" + name, encoded));
     }
 
     public static void delete_file(String name) {
         if (!files.containsKey(name))
-            Logger.log("impossibile eliminare il file: " + name + ", il file non esistente", true, '\n');
+            Logger.log("impossibile eliminare il file: " + name + ", il file non esistente", true);
 
         files.get(name).delete();
         files.remove(name);

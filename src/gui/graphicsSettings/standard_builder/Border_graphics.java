@@ -64,7 +64,7 @@ public class Border_graphics implements GraphicsOption_builder<Border> {
             catch (NumberFormatException | IllegalStateException _) { insets = null; }
 
             if (color == null && insets == null) {
-                Logger.log("impossibile creare il bordo: " + value_str + ", almeno il colore o gli insets devono essere specificati", true, '\n');
+                Logger.log("impossibile creare il bordo: " + value_str + ", almeno il colore o gli insets devono essere specificati", true);
                 return null;
             }
 
@@ -80,7 +80,7 @@ public class Border_graphics implements GraphicsOption_builder<Border> {
             );
         }
 
-        Logger.log("impossibile comprendere il valore del bordo: " + value_str, true, '\n');
+        Logger.log("impossibile comprendere il valore del bordo: " + value_str, true);
         return null;
     }
 

@@ -24,7 +24,7 @@ public class SecureFile {
             temp_encoded = !Arrays.equals(fis.readNBytes(6), "clear\n".getBytes());
             fis.close();
         } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + pathname + ", il file non esiste", true, '\n');
+            Logger.log("impossibile aprire il file " + pathname + ", il file non esiste", true);
         }
 
         is_encoded = temp_encoded;
@@ -49,7 +49,7 @@ public class SecureFile {
             }
         }
         catch (IOException _) {
-            Logger.log("impossibile creare il file: " + pathname, true, '\n');
+            Logger.log("impossibile creare il file: " + pathname, true);
         }
 
         FOS = temp_fos;
@@ -79,10 +79,10 @@ public class SecureFile {
 
             return txt;
         } catch (IllegalBlockSizeException | BadPaddingException e) {
-            Logger.log("impossibile decifrare il contenuto del file " + FILE.getAbsolutePath() + ", file corrotto", true, '\n');
+            Logger.log("impossibile decifrare il contenuto del file " + FILE.getAbsolutePath() + ", file corrotto", true);
             return null;
         } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true, '\n');
+            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true);
             return null;
         }
     }
@@ -96,7 +96,7 @@ public class SecureFile {
                 FOS.write(txt.getBytes());
             }
         } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true, '\n');
+            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true);
         }
     }
 
@@ -119,9 +119,9 @@ public class SecureFile {
 
             FOS.write(txt);
         } catch (IllegalBlockSizeException | BadPaddingException _) {
-            Logger.log("impossibile decifrare il contenuto del file " + FILE.getAbsolutePath() + ", file corrotto", true, '\n');
+            Logger.log("impossibile decifrare il contenuto del file " + FILE.getAbsolutePath() + ", file corrotto", true);
         } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true, '\n');
+            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true);
         }
     }
 

@@ -123,7 +123,7 @@ public abstract class GraphicsSettings {
                 options.set_value(option_name, option_str_value);
             }
             catch (ArrayIndexOutOfBoundsException _) {
-                Logger.log("errore nella lettura delle opzioni, risulta una key senza valore assegnato", true, '\n');
+                Logger.log("errore nella lettura delle opzioni, risulta una key senza valore assegnato", true);
                 return new GraphicsOptions(opt_name);
             }
         }

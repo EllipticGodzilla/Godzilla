@@ -8,12 +8,16 @@ import gui.graphicsSettings.ButtonIcons;
 import gui.graphicsSettings.GraphicsSettings;
 import network.Connection;
 import network.On_arrival;
+import network.Server_info;
+import network.Server_manager;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 public abstract class ClientList_panel extends Database {
@@ -122,40 +126,35 @@ public abstract class ClientList_panel extends Database {
     }
 
     public static ActionListener try_pair = _ -> {
-        On_arrival server_rep = (conv_code, msg) -> {
-            if (new String(msg).equals("acc")) { //appaiamento accettato
-                Connection.pair(clients_list.getSelectedValue());
-                Logger.log("collegamento con il client: " + clients_list.getSelectedValue() + " instaurato con successo!");
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "collegamento con " + clients_list.getSelectedValue() + " instaurato con successo!"), null);
-
-                Connection.write(conv_code, "acc".getBytes()); //appaiamento accettato
-            }
-            else { //appaiamento rifiutato
-                Logger.log("il collegamento con " + clients_list.getSelectedValue() + " è sato rifiutato");
-                TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "collegamento con " + clients_list.getSelectedValue() + " rifiutato"), null);
-            }
-        };
-
         String pair_usr = clients_list.getSelectedValue();
-        if (!pair_usr.isEmpty() && !Connection.is_paired()) { //se è selezionato un client e non è appaiato con nessun altro client
-            Connection.write(("pair:" + pair_usr).getBytes(), server_rep);
+
+        if (!pair_usr.isEmpty() && !Server_manager.is_paired()) { //se è selezionato un client e non è appaiato con nessun altro client
+            Server_manager.pair_with(pair_usr);
         }
-        else if (Connection.is_paired()) {
-            TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "impossibile collegarsi a più di un client"), null);
-            Logger.log("tentativo di collegarsi ad un client mentre si è già collegati con: " + Connection.get_paired_usr(), true, '\n');
+        else if (Server_manager.is_paired()) { //se è già connesso a un altro client
+            Logger.log("tentativo di collegarsi al client: " + pair_usr + " mentre si è già collegati con: " + Server_manager.get_paired_usr(), true);
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.SINGLE_MSG,
+                    false,
+                    "impossibile collegarsi a più di un client"
+            ), null);
         }
-        else if (pair_usr.isEmpty()) {
-            TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, "selezionale il client a cui collegarsi"), null);
-            Logger.log("non è stato selezionato nessun client a cui collegarsi dalla lista", true, '\n');
+        else { //se non è selezionato nessun client dalla lista
+            Logger.log("non è stato selezionato nessun client a cui collegarsi dalla lista", true);
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.SINGLE_MSG,
+                    false,
+                    "selezionale il client a cui collegarsi"
+            ), null);
         }
     };
 
-    public static ActionListener disconnect_list = e -> {
-        Connection.unpair(true);
+    public static ActionListener disconnect_list = _ -> {
+        Server_manager.close(true);
     };
 
     public static void setEnabled(boolean enabled) {
-        if (Connection.is_paired()) { //se è appaiato il pulsante connect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
+        if (Server_manager.is_paired()) { //se è appaiato il pulsante connect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
             disconnect.setEnabled(enabled);
         }
         else { //se non è appaiato a nessun client il pulsante disconnect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
@@ -166,12 +165,12 @@ public abstract class ClientList_panel extends Database {
 
     public static void update_buttons() {
         if (Godzilla_frame.enabled()) { //se i bottoni dovrebbero essere attivi (se non lo sono verranno attivati correttamente una volta chiuso il gui.TempPanel)
-            disconnect.setEnabled(Connection.is_paired());
-            connect.setEnabled(!Connection.is_paired());
+            disconnect.setEnabled(Server_manager.is_paired());
+            connect.setEnabled(!Server_manager.is_paired());
         }
     }
 
-    public static void update_client_list(String list) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+    public static void update_client_list(String list) {
         //elimina la lista precedente
         clients_list.reset_list();
 

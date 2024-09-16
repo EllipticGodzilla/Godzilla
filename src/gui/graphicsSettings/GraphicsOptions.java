@@ -176,7 +176,7 @@ public class GraphicsOptions {
             return true;
         }
         else {
-            Logger.log("tentativo di registrare due volte la chiave: " + key + " in GraphicsOptions", true, '\n');
+            Logger.log("tentativo di registrare due volte la chiave: " + key + " in GraphicsOptions", true);
             return false;
         }
     }
@@ -200,7 +200,7 @@ public class GraphicsOptions {
             return builders[builder_index];
         }
         else {
-            Logger.log("impossibile trovare il builder assegnato alla key: " + key + ", la key non è stata registrata in GraphicsOptions", true, '\n');
+            Logger.log("impossibile trovare il builder assegnato alla key: " + key + ", la key non è stata registrata in GraphicsOptions", true);
             return null;
         }
     }
@@ -227,7 +227,7 @@ public class GraphicsOptions {
             VALUES[index] = value;
         }
         else {
-            Logger.log("impossibile assegnare il valore: " + value_str + " alla key: " + key + ", la key non è stata registrata in GraphicsOptions", true, '\n');
+            Logger.log("impossibile assegnare il valore: " + value_str + " alla key: " + key + ", la key non è stata registrata in GraphicsOptions", true);
         }
     }
 
@@ -238,7 +238,7 @@ public class GraphicsOptions {
             VALUES[index] = value;
         }
         else {
-            Logger.log("impossibile assegnare il valore: " + value + " alla key: " + key + ", la key non è stata registrata in GraphicsOptions", true, '\n');
+            Logger.log("impossibile assegnare il valore: " + value + " alla key: " + key + ", la key non è stata registrata in GraphicsOptions", true);
         }
     }
 
@@ -249,7 +249,7 @@ public class GraphicsOptions {
             return VALUES[index];
         }
         else {
-            Logger.log("impossibile trovare il valore della key: " + key + ", non è stata registrata in GraphicsOptions", true, '\n');
+            Logger.log("impossibile trovare il valore della key: " + key + ", non è stata registrata in GraphicsOptions", true);
             return null;
         }
     }

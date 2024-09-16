@@ -5,6 +5,7 @@ import files.Logger;
 import gui.graphicsSettings.ButtonIcons;
 import gui.graphicsSettings.GraphicsSettings;
 import network.Connection;
+import network.Server_manager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -132,7 +133,7 @@ public abstract class ButtonTopBar_panel {
                         return defineClass(class_name, class_data, 0, class_data.length); //define class
                     }
                     catch (IOException _) {
-                        Logger.log("impossibile inizializzare la mod: " + class_name + ", il file non esiste", true, '\n');
+                        Logger.log("impossibile inizializzare la mod: " + class_name + ", il file non esiste", true);
                         return null;
                     }
                 }
@@ -154,9 +155,9 @@ public abstract class ButtonTopBar_panel {
                         button_class.getDeclaredMethod("register_button").invoke(null);
                     }
                     catch (NoSuchMethodException _) {
-                        Logger.log("impossibile caricare la mod nel file: " + file_name + ", non è presente il metodo 'register_button'", true, '\n');
+                        Logger.log("impossibile caricare la mod nel file: " + file_name + ", non è presente il metodo 'register_button'", true);
                     } catch (InvocationTargetException | IllegalAccessException _) {
-                        Logger.log("impossibile invocare il metodo 'register_button' per la mod in: " + file_name, true, '\n');
+                        Logger.log("impossibile invocare il metodo 'register_button' per la mod in: " + file_name, true);
                     }
                 }
             }
@@ -182,17 +183,17 @@ public abstract class ButtonTopBar_panel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (ButtonTopBar_panel.active_mod.isEmpty()) { //se non c'è nessun'altra mod attiva al momento
-                    Connection.write(
+                    Connection.send(
                             ("SOM:" + name).getBytes(),
                             (_, msg) -> {
                                 try {
                                     if (new String(msg).equals("start")) { //se ha accettato di utilizzare questa mod
-                                        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, Connection.get_paired_usr() + " ha accettato la mod"), null);
+                                        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, Server_manager.get_paired_usr() + " ha accettato la mod"), null);
 
                                         ButtonTopBar_panel.active_mod = name;
                                         on_press.invoke(null, name);
                                     } else { //se non è stato accettato di utilizzare questa mod
-                                        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, Connection.get_paired_usr() + " non ha accettato la mod"), null);
+                                        TempPanel.show(new TempPanel_info(TempPanel_info.SINGLE_MSG, false, Server_manager.get_paired_usr() + " non ha accettato la mod"), null);
                                     }
                                 } catch (Exception _) {}
                             });
@@ -219,7 +220,7 @@ public abstract class ButtonTopBar_panel {
                 METHOD_MAP.get(name).invoke(null, name);
             }
             catch (IllegalAccessException | InvocationTargetException _) {
-                Logger.log("impossibile invocare il metodo per attivare la mod: " + name, true, '\n');
+                Logger.log("impossibile invocare il metodo per attivare la mod: " + name, true);
             }
         }
     }
@@ -233,7 +234,7 @@ public abstract class ButtonTopBar_panel {
             Central_panel.get_programmable_panel().setVisible(false);
 
             if (notify_pClient) {
-                Connection.write("EOM");
+                Connection.send("EOM".getBytes());
             }
         }
     }
