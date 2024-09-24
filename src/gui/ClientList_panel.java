@@ -6,9 +6,6 @@ import gui.custom.GList;
 import gui.custom.GScrollPane;
 import gui.graphicsSettings.ButtonIcons;
 import gui.graphicsSettings.GraphicsSettings;
-import network.Connection;
-import network.On_arrival;
-import network.Server_info;
 import network.Server_manager;
 
 import javax.swing.*;
@@ -16,8 +13,6 @@ import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.regex.Pattern;
 
 public abstract class ClientList_panel extends Database {
@@ -31,23 +26,19 @@ public abstract class ClientList_panel extends Database {
             client_panel = new JPanel();
             client_panel.setLayout(new GridBagLayout());
             client_panel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 5));
+            client_panel.setOpaque(false);
 
             //inizializza tutti i componenti della gui
             connect = new JButton();
             disconnect = new JButton();
-            clients_list = new GList(
-                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_background"),
-                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_foreground"),
-                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_background"),
-                    (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_foreground"),
-                    (Border) GraphicsSettings.active_option.get_value("client_panel_list_selected_border")
-            );
+            clients_list = new GList();
             GScrollPane clients_scroller = new GScrollPane(clients_list);
             JPanel spacer = new JPanel();
 
             disconnect.setEnabled(false);
 
             spacer.setFocusable(false);
+            spacer.setOpaque(false);
 
             connect.setBorder(null);
             disconnect.setBorder(null);
@@ -95,25 +86,19 @@ public abstract class ClientList_panel extends Database {
             connect.setEnabled(false);
             disconnect.setEnabled(false);
             clients_scroller.setPreferredSize(new Dimension(0, 0));
+
             update_colors();
+            GraphicsSettings.run_at_theme_change(ClientList_panel::update_colors);
         }
 
         return client_panel;
     }
 
     public static void update_colors() {
-        client_panel.setBackground((Color) GraphicsSettings.active_option.get_value("client_panel_background"));
-        client_panel.getComponents()[2].setBackground((Color) GraphicsSettings.active_option.get_value("client_panel_background"));
-        clients_list.change_colors(
-                (Color) GraphicsSettings.active_option.get_value("client_panel_list_background"),
-                (Color) GraphicsSettings.active_option.get_value("client_panel_list_foreground"),
-                (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_background"),
-                (Color) GraphicsSettings.active_option.get_value("client_panel_list_selected_foreground"),
-                (Border) GraphicsSettings.active_option.get_value("client_panel_list_selected_border")
-        );
+        clients_list.update_colors();
 
-        ButtonIcons connect_icon = (ButtonIcons) GraphicsSettings.active_option.get_value("client_panel_connect");
-        ButtonIcons disconnect_icon = (ButtonIcons) GraphicsSettings.active_option.get_value("client_panel_disconnect");
+        ButtonIcons connect_icon = (ButtonIcons) GraphicsSettings.active_theme.get_value("client_panel_connect");
+        ButtonIcons disconnect_icon = (ButtonIcons) GraphicsSettings.active_theme.get_value("client_panel_disconnect");
 
         connect.setIcon(connect_icon.getStandardIcon());
         connect.setRolloverIcon(connect_icon.getRolloverIcon());

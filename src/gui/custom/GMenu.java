@@ -8,26 +8,22 @@ import java.awt.*;
 import java.util.Vector;
 
 class GMenu extends JMenu {
-    private final String COLOR_SETTINGS_BASE;
     private final Vector<GMenuItem> MENU_ITEMS = new Vector<>();
 
-    public GMenu(String txt, String settings_base) {
+    public GMenu(String txt) {
         super(txt);
-        this.COLOR_SETTINGS_BASE = settings_base;
-        this.setBackground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_selected_background"));
-        this.setForeground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_foreground"));
-        this.getPopupMenu().setBorder((Border) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_dropdown_border"));
+
+        this.setOpaque(false);
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_background"));
+        this.setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_text_color"));
+        this.getPopupMenu().setBorder((Border) GraphicsSettings.active_theme.get_value("dropdown_border"));
+        this.getPopupMenu().setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_background"));
     }
 
     public void update_colors() {
-        this.setBackground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_selected_background"));
-        this.getPopupMenu().setBorder((Border) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_dropdown_border"));
-
-        if (isSelected()) {
-            this.setForeground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_selected_foreground"));
-        } else {
-            this.setForeground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_foreground"));
-        }
+        this.getPopupMenu().setBorder((Border) GraphicsSettings.active_theme.get_value("dropdown_border"));
+        this.getPopupMenu().setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_background"));
+        setSelected(isSelected()); //aggiorna tutti i colori
 
         for (GMenuItem item : MENU_ITEMS) {
             item.update_colors();
@@ -35,13 +31,14 @@ class GMenu extends JMenu {
     }
 
     @Override
-    public void setSelected(boolean b) {
-        if (b) {
+    public void setSelected(boolean selected) {
+        if (selected) {
             this.setOpaque(true);
-            this.setForeground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_selected_foreground"));
+            this.setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_background"));
+            this.setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_text_color"));
         } else {
             this.setOpaque(false);
-            this.setForeground((Color) GraphicsSettings.active_option.get_value(COLOR_SETTINGS_BASE + "_foreground"));
+            this.setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_text_color"));
         }
         this.repaint();
     }

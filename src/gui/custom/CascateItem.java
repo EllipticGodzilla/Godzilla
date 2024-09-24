@@ -1,5 +1,6 @@
 package gui.custom;
 
+import gui.graphicsSettings.GraphicsSettings;
 import gui.settingsFrame.SettingsFrame;
 
 import javax.swing.*;
@@ -26,22 +27,23 @@ public class CascateItem extends JPanel {
     public CascateItem(CascateMenu menu, String relative_name, String full_name, boolean have_child, ActionListener child_action) {
         super();
         super.setLayout(new GridBagLayout());
+        this.setOpaque(false);
         this.MENU = menu;
         this.FULL_NAME = full_name;
         this.have_child = have_child;
         this.CHILDS_DEFAULT_ACTION = child_action;
 
-        UIManager.put("Button.select", new Color(88, 91, 93));
         init_menu_button(relative_name);
 
         CHILD_PANEL.setLayout(new BoxLayout(CHILD_PANEL, BoxLayout.Y_AXIS));
+        CHILD_PANEL.setOpaque(false);
         CHILD_PANEL.setVisible(false);
 
         SEPARATOR.setPreferredSize(new Dimension(
                 have_child ? 15 : 25,
                 0
         ));
-        SEPARATOR.setBackground(new Color(58, 61, 63));
+        SEPARATOR.setOpaque(false);
         SEPARATOR.setVisible(!have_child);
 
         GridBagConstraints c = new GridBagConstraints();
@@ -75,6 +77,15 @@ public class CascateItem extends JPanel {
             c.gridx = 0;
             c.weightx = 0;
             this.add(SEPARATOR, c);
+        }
+    }
+
+    public void update_color() {
+        menu_button.update_color();
+
+        for (Component comp : CHILD_PANEL.getComponents()) {
+            CascateItem child = (CascateItem) comp;
+            child.update_color();
         }
     }
 
@@ -187,11 +198,6 @@ public class CascateItem extends JPanel {
 }
 
 class MenuButton extends JButton {
-    private static final ImageIcon CLOSE_ICON = new ImageIcon(SettingsFrame.class.getResource("/images/menu_closed.png"));
-    private static final ImageIcon OPEN_ICON = new ImageIcon(SettingsFrame.class.getResource("/images/menu_open.png"));
-    protected static final Color SELECTED_BACKGROUND = new Color(88, 91, 93);
-    protected static final Color UNSELECTED_BACKGROUND = new Color(58, 61, 63);
-
     private CascateMenu menu;
     private JLabel text, icon;
     private JPanel separator;
@@ -205,19 +211,17 @@ class MenuButton extends JButton {
 
         this.setLayout(new BorderLayout());
         this.addMouseListener(listener);
-        this.setBackground(new Color(58, 61, 63));
-        this.setForeground(Color.lightGray);
+        this.setOpaque(false);
+        this.setContentAreaFilled(false);
         this.setHorizontalAlignment(SwingConstants.LEFT);
         this.setFocusPainted(false);
         this.setBorder(null);
 
-        icon = new JLabel(CLOSE_ICON);
+        icon = new JLabel((ImageIcon) GraphicsSettings.active_theme.get_value("settings_dropdown_list_closed_icon"));
         text = new JLabel(name, SwingConstants.LEFT);
 
-        text.setForeground(Color.lightGray);
+        text.setForeground((Color) GraphicsSettings.active_theme.get_value("list_text_color"));
         text.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
-        icon.setBorder(null);
-        icon.setOpaque(false);
 
         if (have_child) {
             this.add(icon, BorderLayout.WEST);
@@ -225,22 +229,48 @@ class MenuButton extends JButton {
         this.add(text, BorderLayout.CENTER);
     }
 
+    public void update_color() {
+        if (this.isOpaque()) { //se è selezionato
+            this.setBackground((Color) GraphicsSettings.active_theme.get_value("list_selected_background"));
+            text.setForeground((Color) GraphicsSettings.active_theme.get_value("list_selected_text_color"));
+
+            if (paint_sep) {
+                separator.setBackground((Color) GraphicsSettings.active_theme.get_value("list_selected_background"));
+            }
+        }
+        else { //se non è selezionato
+            text.setForeground((Color) GraphicsSettings.active_theme.get_value("list_text_color"));
+        }
+    }
+
     public void open() {
-        icon.setIcon(OPEN_ICON);
+        icon.setIcon((ImageIcon) GraphicsSettings.active_theme.get_value("settings_dropdown_list_opened_icon"));
     }
 
     public void close() {
-        icon.setIcon(CLOSE_ICON);
+        icon.setIcon((ImageIcon) GraphicsSettings.active_theme.get_value("settings_dropdown_list_closed_icon"));
     }
 
     public void select() {
-        this.setBackground(SELECTED_BACKGROUND);
-        if (paint_sep) separator.setBackground(SELECTED_BACKGROUND);
+        this.setOpaque(true);
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("list_selected_background"));
+        text.setForeground((Color) GraphicsSettings.active_theme.get_value("list_selected_text_color"));
+
+        if (paint_sep) {
+            separator.setOpaque(true);
+            separator.setBackground((Color) GraphicsSettings.active_theme.get_value("list_selected_background"));
+            separator.repaint();
+        }
     }
 
     public void unselect() {
-        this.setBackground(UNSELECTED_BACKGROUND);
-        if (paint_sep) separator.setBackground(UNSELECTED_BACKGROUND);
+        this.setOpaque(false);
+        text.setForeground((Color) GraphicsSettings.active_theme.get_value("list_text_color"));
+
+        if (paint_sep) {
+            separator.setOpaque(false);
+            separator.repaint();
+        }
     }
 
     private final MouseListener listener = new MouseListener() {

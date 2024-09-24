@@ -1,5 +1,7 @@
 package gui.custom;
 
+import gui.graphicsSettings.GraphicsSettings;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -9,14 +11,14 @@ public class CascateMenu extends JPanel {
     private CascateItem selected = null;
 
     public CascateMenu() {
-        this.setBackground(Color.BLACK);
         this.setLayout(new GridBagLayout());
+        this.setOpaque(false);
 
-        LIST_PANEL.setBackground(new Color(58, 61, 63));
+        LIST_PANEL.setOpaque(false);
         LIST_PANEL.setLayout(new GridBagLayout());
 
         JPanel filler = new JPanel();
-        filler.setBackground(new Color(58, 61, 63));
+        filler.setOpaque(false);
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -30,6 +32,13 @@ public class CascateMenu extends JPanel {
         c.weighty = 0;
         c.gridy = 0;
         this.add(LIST_PANEL, c);
+    }
+
+    public void updated_color() {
+        for (Component comp : LIST_PANEL.getComponents()) {
+            CascateItem list_item = (CascateItem) comp;
+            list_item.update_color();
+        }
     }
 
     public void add_item(String name) {
@@ -112,6 +121,14 @@ public class CascateMenu extends JPanel {
         }
 
         selected = item;
+    }
+
+    //se ha un item selezionato lo deseleziona
+    public void unselect() {
+        if (selected != null) {
+            selected.unselect();
+            selected = null;
+        }
     }
 
     public void reset() {

@@ -17,8 +17,10 @@ public abstract class Central_panel {
             layeredPane = new GLayeredPane();
             MAIN_PANEL.setLayout(new GridLayout(1, 0));
             MAIN_PANEL.setBorder(BorderFactory.createEmptyBorder(5, 5, 10, 10));
+            MAIN_PANEL.setOpaque(false);
 
             update_colors();
+            GraphicsSettings.run_at_theme_change(Central_panel::update_colors);
 
             PROGRAMMABLE_PANEL.setVisible(false);
             PROGRAMMABLE_PANEL.setLayout(null);
@@ -32,9 +34,8 @@ public abstract class Central_panel {
     }
 
     public static void update_colors() {
-        MAIN_PANEL.setBackground((Color) GraphicsSettings.active_option.get_value("central_panel_background"));
-        IMAGE_PANEL.setBackground((Color) GraphicsSettings.active_option.get_value("central_panel_image_background"));
-        IMAGE_PANEL.set_icon((ImageIcon) GraphicsSettings.active_option.get_value("central_panel_icon"));
+        IMAGE_PANEL.setBackground((Color) GraphicsSettings.active_theme.get_value("central_panel_background"));
+        IMAGE_PANEL.set_icon((ImageIcon) GraphicsSettings.active_theme.get_value("central_panel_icon"));
     }
 
     public static JPanel get_programmable_panel() {

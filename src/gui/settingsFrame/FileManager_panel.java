@@ -5,8 +5,10 @@ import files.Pair;
 import gui.custom.CascateItem;
 import gui.custom.CascateMenu;
 import gui.custom.GScrollPane;
+import gui.graphicsSettings.GraphicsSettings;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
@@ -16,17 +18,23 @@ public abstract class FileManager_panel {
     private static final JPanel MAIN_PANEL = new JPanel();
     private static final FileEditor_panel CONTENT_PANEL = new FileEditor_panel();
     private static final CascateMenu MENU = new CascateMenu();
+    private static final GScrollPane MENU_SCROLLER = new GScrollPane(MENU);
 
     private static final Map<String, Pair<String, Boolean>> changed_files = new HashMap<>(); //ricorda tutte le modifiche ai vari file aperti
 
     public static void init() {
-        MAIN_PANEL.setBackground(new Color(58, 61, 63));
+        MAIN_PANEL.setOpaque(false);
         MAIN_PANEL.setBorder(null);
         MAIN_PANEL.setLayout(new GridBagLayout());
 
-        GScrollPane scrollPane = new GScrollPane(MENU, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setPreferredSize(new Dimension(250, 0));
-        scrollPane.set_scrollbar_thickness(10);
+        Color list_bg = (Color) GraphicsSettings.active_theme.get_value("list_background");
+        MENU_SCROLLER.getViewport().setBackground(list_bg);
+        MENU_SCROLLER.setBorder(BorderFactory.createLineBorder(list_bg.darker()));
+        MENU_SCROLLER.setPreferredSize(new Dimension(250, 0));
+        MENU_SCROLLER.set_scrollbar_thickness(10);
+
+        //aggiorna i colori di MENU quando si cambia tema colori
+        GraphicsSettings.run_at_theme_change(FileManager_panel::update_colors);
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -35,11 +43,16 @@ public abstract class FileManager_panel {
         c.weightx = 0;
         c.weighty = 1;
         c.fill = GridBagConstraints.BOTH;
-        MAIN_PANEL.add(scrollPane, c);
+        MAIN_PANEL.add(MENU_SCROLLER, c);
 
         c.gridx = 1;
         c.weightx = 1;
         MAIN_PANEL.add(CONTENT_PANEL, c);
+    }
+
+    public static void update_colors() {
+        MENU_SCROLLER.update_colors();
+        CONTENT_PANEL.update_colors();
     }
 
     public static JPanel load() {
@@ -101,8 +114,9 @@ public abstract class FileManager_panel {
 }
 
 class FileEditor_panel extends JPanel {
-    private final JTextField INFO_FIELD = new JTextField();
+    private final JLabel INFO_FIELD = new JLabel();
     private final JTextArea TEXT_AREA = new JTextArea();
+    private final GScrollPane TEXT_AREA_SCROLLER = new GScrollPane(TEXT_AREA);
     private final JButton ENCODED_CHECKBOX = new JButton();
 
     private static final ImageIcon CHECKBOX_DIS = new ImageIcon(FileEditor_panel.class.getResource("/images/checkbox_dis.png"));
@@ -113,19 +127,18 @@ class FileEditor_panel extends JPanel {
     private boolean original_encoded = false;
 
     public FileEditor_panel() {
+        this.setOpaque(false);
+        this.setLayout(new GridBagLayout());
+
         INFO_FIELD.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 0));
-        INFO_FIELD.setFocusable(false);
-        INFO_FIELD.setBackground(new Color(58, 61, 63));
-        INFO_FIELD.setForeground(Color.lightGray);
+        INFO_FIELD.setForeground((Color) GraphicsSettings.active_theme.get_value("text_color"));
         INFO_FIELD.setText("file: , encoded:");
 
-        TEXT_AREA.setBackground(new Color(138, 141, 143));
-        TEXT_AREA.setForeground(Color.darkGray.darker());
-        TEXT_AREA.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.darkGray, 2),
-                BorderFactory.createEmptyBorder(2, 2, 0, 0)
-        ));
+        TEXT_AREA.setBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+        TEXT_AREA.setForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
+        TEXT_AREA.setBorder((Border) GraphicsSettings.active_theme.get_value("input_border"));
         TEXT_AREA.setText("file content");
+        TEXT_AREA.setEditable(false);
 
         ENCODED_CHECKBOX.setBorder(null);
         ENCODED_CHECKBOX.setIcon(CHECKBOX_DIS);
@@ -133,15 +146,11 @@ class FileEditor_panel extends JPanel {
         ENCODED_CHECKBOX.setOpaque(false);
         ENCODED_CHECKBOX.setContentAreaFilled(false);
 
-        GScrollPane scrollPane = new GScrollPane(TEXT_AREA);
-        scrollPane.set_scrollbar_thickness(10);
-        scrollPane.setPreferredSize(new Dimension(538, 315)); //dimensioni di TEXT_AREA quando il frame è alle dimensioni minime
-
-        this.setBackground(new Color(58, 61, 63));
-        this.setLayout(new GridBagLayout());
+        TEXT_AREA_SCROLLER.set_scrollbar_thickness(10);
+        TEXT_AREA_SCROLLER.setPreferredSize(new Dimension(538, 315)); //dimensioni di TEXT_AREA quando il frame è alle dimensioni minime
 
         JPanel filler = new JPanel();
-        filler.setBackground(new Color(58, 61, 63));
+        filler.setOpaque(false);
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -154,18 +163,25 @@ class FileEditor_panel extends JPanel {
         this.add(INFO_FIELD, c);
 
         c.gridx = 1;
-        this.add(ENCODED_CHECKBOX);
+        this.add(ENCODED_CHECKBOX, c);
 
         c.gridx = 2;
         c.weightx = 1;
-        this.add(filler);
-
-        c.gridx = 0;
+        this.add(filler, c);
+           c.gridx = 0;
         c.gridy = 1;
         c.weighty = 1;
         c.insets.top = 0;
         c.gridwidth = 3;
-        this.add(scrollPane, c);
+        this.add(TEXT_AREA_SCROLLER, c);
+    }
+
+    public void update_colors() {
+        INFO_FIELD.setForeground((Color) GraphicsSettings.active_theme.get_value("text_color"));
+        TEXT_AREA.setBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+        TEXT_AREA.setForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
+        TEXT_AREA.setBorder((Border) GraphicsSettings.active_theme.get_value("input_border"));
+        TEXT_AREA_SCROLLER.update_colors();
     }
 
     private ActionListener CHECKBOX_LISTENER = _ -> {
@@ -183,6 +199,7 @@ class FileEditor_panel extends JPanel {
 
         INFO_FIELD.setText("file: , encoded:");
         TEXT_AREA.setText("file content");
+        TEXT_AREA.setEditable(false);
     }
 
     public void save_changes() {
@@ -199,6 +216,7 @@ class FileEditor_panel extends JPanel {
         if (file_cont == null) { //se non riesce a leggere il file
             INFO_FIELD.setText("file: " + name + ", encoded:");
             TEXT_AREA.setText("File Not Found, or content unreadable");
+            TEXT_AREA.setEditable(false);
         }
         else { //se riesce a leggere il contenuto del file
             if (original_name != null) { //se prima era aperto un altro file, salva le eventuali modifiche
@@ -210,6 +228,7 @@ class FileEditor_panel extends JPanel {
             INFO_FIELD.setText("file: " + name + ", encoded:");
             ENCODED_CHECKBOX.setIcon(is_encoded? CHECKBOX_SEL: CHECKBOX_DIS);
             TEXT_AREA.setText(file_cont);
+            TEXT_AREA.setEditable(true);
 
             this.updateUI();
 

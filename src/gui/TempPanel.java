@@ -4,8 +4,11 @@ import files.Pair;
 import gui.custom.GComboBox;
 import gui.custom.GPasswordField;
 import gui.custom.GTextArea;
+import gui.graphicsSettings.ButtonIcons;
+import gui.graphicsSettings.GraphicsSettings;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
@@ -24,6 +27,7 @@ abstract public class TempPanel {
     private static JPanel temp_panel = null; //temp panel
     private static final JPanel TXT_PANEL = new JPanel(); //pannello che contiene le txt area
     private static boolean visible = false;
+    private static boolean accept_esc_or_enter = false; //se possono essere utilizzati i tasti esc o invio al posto di premere i bottoni annulla, ok
 
     public static JPanel init() throws IOException {
         if (temp_panel == null) {
@@ -31,19 +35,14 @@ abstract public class TempPanel {
             temp_panel = new JPanel();
             temp_panel.setLayout(new GridBagLayout());
             TXT_PANEL.setLayout(new GridBagLayout());
-            temp_panel.setBackground(new Color(58, 61, 63));
-            TXT_PANEL.setBackground(new Color(58, 61, 63));
-            temp_panel.setBorder(BorderFactory.createLineBorder(new Color(38, 41, 43)));
+            TXT_PANEL.setOpaque(false);
             TXT_PANEL.setBorder(null);
 
-            //inizializza i bottoni ok ed annulla
-            OK_BUTTON.setIcon(new ImageIcon(TempPanel.class.getResource("/images/ok.png")));
-            OK_BUTTON.setPressedIcon(new ImageIcon(TempPanel.class.getResource("/images/ok_pres.png")));
-            OK_BUTTON.setSelectedIcon(new ImageIcon(TempPanel.class.getResource("/images/ok_sel.png")));
-            ANNULLA_BUTTON.setIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel.png")));
-            ANNULLA_BUTTON.setPressedIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel_pres.png")));
-            ANNULLA_BUTTON.setSelectedIcon(new ImageIcon(TempPanel.class.getResource("/images/cancel_sel.png")));
+            //imposta i colori e le icone dei pulsanti
+            update_colors();
+            GraphicsSettings.run_at_theme_change(TempPanel::update_colors);
 
+            //inizializza i bottoni ok e annulla
             OK_BUTTON.addActionListener(OK_LISTENER);
             ANNULLA_BUTTON.addActionListener(annulla_listener);
 
@@ -63,9 +62,10 @@ abstract public class TempPanel {
 
                 @Override
                 public void keyPressed(KeyEvent e) {
-                    if (e.getKeyCode() == 10) { //se viene premuto invio è come premere ok
+                    if (e.getKeyCode() == 10 && accept_esc_or_enter) { //se viene premuto invio è come premere ok
                         OK_BUTTON.doClick();
-                    } else if (ANNULLA_BUTTON.isVisible() && e.getKeyCode() == 27) { //se viene premuto esc è come premere annulla
+                    }
+                    else if (ANNULLA_BUTTON.isVisible() && e.getKeyCode() == 27 && accept_esc_or_enter) { //se viene premuto esc è come premere annulla
                         ANNULLA_BUTTON.doClick();
                     }
                 }
@@ -95,13 +95,25 @@ abstract public class TempPanel {
             c.insets.left = 0;
             c.gridx = 1;
             temp_panel.add(OK_BUTTON, c);
-
-            //imposta il colore del background del testo selezionato
-            UIManager.put("TextField.selectionBackground", new javax.swing.plaf.ColorUIResource(new Color(178, 191, 193)));
-            UIManager.put("TextArea.selectionBackground", new javax.swing.plaf.ColorUIResource(new Color(178, 191, 193)));
-            UIManager.put("PasswordField.selectionBackground", new javax.swing.plaf.ColorUIResource(new Color(178, 191, 193)));
         }
         return temp_panel;
+    }
+
+    public static void update_colors() {
+        temp_panel.setBackground((Color) GraphicsSettings.active_theme.get_value("frame_background"));
+        temp_panel.setBorder((Border) GraphicsSettings.active_theme.get_value(("temp_panel_border")));
+
+        ButtonIcons ok_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("temp_panel_ok");
+        ButtonIcons annulla_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("temp_panel_annulla");
+
+        OK_BUTTON.setIcon(ok_icons.getStandardIcon());
+        OK_BUTTON.setPressedIcon(ok_icons.getPressedIcon());
+        OK_BUTTON.setRolloverIcon(ok_icons.getRolloverIcon());
+        ANNULLA_BUTTON.setIcon(annulla_icons.getStandardIcon());
+        ANNULLA_BUTTON.setPressedIcon(annulla_icons.getPressedIcon());
+        ANNULLA_BUTTON.setRolloverIcon(annulla_icons.getRolloverIcon());
+
+        temp_panel.repaint();
     }
 
     public static void recenter_in_frame() {
@@ -114,6 +126,8 @@ abstract public class TempPanel {
     }
 
     private static final ActionListener OK_LISTENER = _ -> {
+        accept_esc_or_enter = false; //non permette più di utilizzare i tasti invio ed esc
+
         //copia tutti i testi contenuti nelle input area in questo array, utilizza Object perchè per le password non sono String ma char[]
         Vector<Object> input_txt = new Vector<>();
 
@@ -134,14 +148,10 @@ abstract public class TempPanel {
         reset(); //resetta tutta la grafica e fa partire il prossimo in coda
 
         if (action != null) { //se è stata specificata un azione
-            if (input_txt.isEmpty() || valid_input(input_txt)) { //se è un messaggio, o se richiede un input ed è stato inserito testo valido
-                action.input.removeAllElements();
-                action.input.addAll(input_txt); //fa partire il codice con tutti gli input ricavati
+            action.input.removeAllElements();
+            action.input.addAll(input_txt); //fa partire il codice con tutti gli input ricavati
 
-                new Thread(action::success).start();
-            } else { //se non è stato inserito un input valido
-                new Thread(action::fail).start();
-            }
+            new Thread(action::success).start();
         }
     };
 
@@ -175,6 +185,16 @@ abstract public class TempPanel {
                 else if (panel_type == TempPanel_info.DOUBLE_COL_MSG) {
                     show_dual_con_msg(info.get_txts());
                 }
+
+                //attende 0.2s e poi permette l'utilizzo dei tasti esc e invio
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(200);
+                    }
+                    catch (InterruptedException _) {}
+
+                    accept_esc_or_enter = true;
+                }).start();
             }
             catch (IOException e) {
                 throw new RuntimeException(e);
@@ -321,23 +341,6 @@ abstract public class TempPanel {
         visible = true;
     }
 
-    private static boolean valid_input(Vector<Object> inputs) { //controlla che nessun campo di input sia stato lasciato vuoto o con solo uno spazio/a capo
-        for (Object obj : inputs) {
-            if (obj instanceof String str) { //controlla che nessuna stringa sia solamente spazi o \n
-                if (str.replaceAll("[ \n]", "").isEmpty()) {
-                    return false;
-                }
-            }
-            else if (obj instanceof char[] psw) { //controlla che ogni password non abbia lunghezza 0
-                if (psw.length == 0) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     private static void reset() {
         //resetta il pannello e lo rende invisibile
         visible = false;
@@ -359,16 +362,13 @@ abstract public class TempPanel {
         protected static final int WIDTH  = 150;
         protected static final int HEIGHT = 20;
 
-        private final int INDEX;
         public EditTextField(int index) {
             super();
 
-            this.INDEX = index;
-
-            this.setBackground(new Color(108, 111, 113));
-            this.setBorder(BorderFactory.createLineBorder(new Color(68, 71, 73)));
+            this.setBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+            this.setBorder((Border) GraphicsSettings.active_theme.get_value("input_border"));
             this.setFont(new Font("Arial", Font.BOLD, 14));
-            this.setForeground(new Color(218, 221, 223));
+            this.setForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
 
             this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
             this.setMinimumSize(this.getPreferredSize());
@@ -395,12 +395,15 @@ abstract public class TempPanel {
                     else if (input_cmp instanceof JComboBox<?>) {
                         ((JComboBox<?>) input_cmp).grabFocus();
                     }
-                } catch (Exception ex) { //se non esiste un input con index > di questo
-                    OK_BUTTON.doClick(); //simula il tasto "ok"
+                }
+                catch (Exception ex) { //se non esiste un input con index > di questo
+                    if (accept_esc_or_enter) {
+                        OK_BUTTON.doClick(); //simula il tasto "ok"
+                    }
                 }
             }
             else if (e.getKeyCode() == 27) { //27 -> esc
-                if (ANNULLA_BUTTON.isVisible()) {
+                if (ANNULLA_BUTTON.isVisible() && accept_esc_or_enter) {
                     ANNULLA_BUTTON.doClick();
                 }
             }

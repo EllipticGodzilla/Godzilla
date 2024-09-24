@@ -4,6 +4,7 @@ import gui.*;
 import network.Server_info;
 
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.xml.crypto.Data;
 import java.io.*;
@@ -80,10 +81,12 @@ public abstract class File_interface extends Database {
             //genera il testo da scrivere nel file da tutti i dns salvati in Database.dns_ca_key
             StringBuilder dns_list = new StringBuilder();
             for (String ip : Database.dns_ca_key.keySet()) { //per ogni dns riconosciuto
-                dns_list.append( ip )
-                        .append( ":" )
-                        .append( Database.dns_ca_key.get(ip).el2 )
-                        .append( "\n" );
+                String base64_pkey = Base64.getEncoder().encodeToString(Database.dns_ca_key.get(ip).el2);
+
+                dns_list.append(ip)
+                        .append(":")
+                        .append(base64_pkey)
+                        .append("\n");
             }
 
             //riscrive tutte le informazioni salvate nel file con le nuve
@@ -96,30 +99,39 @@ public abstract class File_interface extends Database {
 
     public static void update_servers_info() {
         String key_list_txt = read_file("database/DNS_CA_list.dat");
+        String[] file_lines = key_list_txt.split("\n");
 
-        Pattern sep_key_list_patt = Pattern.compile("[;\n]");
-        String[] sep_key_list = sep_key_list_patt.split(key_list_txt); //ottiene la lista separata
+        Pattern file_line_pattern = Pattern.compile("([^:]+):([^:]+)");
+        for (String line : file_lines) {
+            Matcher line_matcher = file_line_pattern.matcher(line);
 
-        /*
-        *  se sep_key_list non ha un numero pari di elementi significa che il file finisce con una linea vuota (o che è corrotto)
-        *  e di conseguenza l'ultimo elemento dell'array non contiene nessun dato per un dns
-         */
-        if ((sep_key_list.length & 1) != 0) {
-            sep_key_list = Arrays.copyOfRange(sep_key_list, 0, sep_key_list.length - 1); //rimuove l'ultimo elemento
+            if (line_matcher.matches()) {
+                try {
+                    String dns_ip = line_matcher.group(1);
+                    byte[] ca_pkey = Base64.getDecoder().decode(line_matcher.group(2));
+
+                    add_dns_ca_key(dns_ip, ca_pkey);
+                    Logger.log("memorizzate le informazioni per il dns: " + dns_ip);
+                }
+                catch (IllegalArgumentException _) { //errore nella decodifica della chiave pubblica
+                    Logger.log("errore nella formattazione della chiave pubblica della CA nella linea: " + line + " nel file DNS_CA_list.dat", true);
+                }
+            }
+            else {
+                Logger.log("la linea: " + line + " in DNS_CA_list.dat non è comprensibile", true);
+            }
         }
-
-        Logger.log("apro il file database/CA_DNS_list.dat e memmorizzo i dati dei dns registrati");
-        for (int i = 0; i < sep_key_list.length; i += 2) {
-            add_dns_ca_key(sep_key_list[i], sep_key_list[i + 1]);
-            Logger.log("memorizzato dns con indirizzo: " + sep_key_list[i]);
-        }
-        Logger.log("memorizzati tutti i dns registrati");
 
         if (!Database.dns_ca_key.isEmpty()) { //se conosce almeno un dns
             init_server_list();
         }
         else { //se non ne conosce nessuno richiede prima di aggiungerne
-            req_dns_ca.success();
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.INPUT_REQ,
+                    !Database.dns_ca_key.isEmpty(), //se sta aggiungendo un nuovo dns mostra annulla, altrimenti no
+                    "indirizzo ip del dns:",
+                    "chiave pubblica della CA:"
+            ), ADD_DNSCA_ACTION);
         }
     }
 
@@ -193,18 +205,18 @@ public abstract class File_interface extends Database {
 
     //    MANAGE OF CA PUBLIC KEY
 
-    private static void add_dns_ca_key(String ip, String key_b64) {
+    private static void add_dns_ca_key(String ip, byte[] ca_pkey) {
         try {
             //legge la public key della CA
             KeyFactory kf = KeyFactory.getInstance("RSA");
-            PublicKey key = kf.generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(key_b64))); //sep_key_list[i+1] conitiene la chiave pubblica in base64
+            PublicKey key = kf.generatePublic(new X509EncodedKeySpec(ca_pkey)); //sep_key_list[i+1] conitiene la chiave pubblica in base64
 
             //genera il cipher
             Cipher decoder = Cipher.getInstance("RSA");
             decoder.init(Cipher.DECRYPT_MODE, key);
 
             //memorizza la connessione dns_ip -> (cipher, pub_key)
-            Database.dns_ca_key.put(ip, new Pair<>(decoder, key_b64));
+            Database.dns_ca_key.put(ip, new Pair<>(decoder, ca_pkey));
         }
         catch (InvalidKeySpecException | InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException _) {} //exception ignorate
     }
@@ -214,17 +226,17 @@ public abstract class File_interface extends Database {
         public void success() {
             try {
                 String dns_ip = (String) input.elementAt(0);
-                String base64_pKey = (String) input.elementAt(1);
+                byte[] ca_pkey = Base64.getDecoder().decode((String) input.elementAt(1));
 
                 //controlla che l'indirizzo ip sia formattato correttamente
                 Pattern ip_patt = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+");
                 Matcher match = ip_patt.matcher(dns_ip);
 
-                if (!match.find()) { //se non è stato inserito correttamente
+                if (!match.matches()) { //se non è stato inserito correttamente
                     retry();
                 }
                 else {
-                    add_dns_ca_key(dns_ip, base64_pKey);
+                    add_dns_ca_key(dns_ip, ca_pkey);
                     init_server_list();
                 }
             }
@@ -238,16 +250,8 @@ public abstract class File_interface extends Database {
                     TempPanel_info.SINGLE_MSG,
                     false,
                     "dati inseriti non validi, riprovare"
-            ), req_dns_ca);
-        }
+            ), null);
 
-        @Override
-        public void fail() {}
-    };
-
-    public static TempPanel_action req_dns_ca = new TempPanel_action() {
-        @Override
-        public void success() {
             TempPanel.show(new TempPanel_info(
                     TempPanel_info.INPUT_REQ,
                     !Database.dns_ca_key.isEmpty(), //se sta aggiungendo un nuovo dns mostra annulla, altrimenti no
@@ -257,7 +261,7 @@ public abstract class File_interface extends Database {
         }
 
         @Override
-        public void fail() {} //non può essere premuto annulla
+        public void fail() {}
     };
 
     public static void init_server_list() {
@@ -279,7 +283,7 @@ public abstract class File_interface extends Database {
         }
 
         if (!file_content.isEmpty()) { //se è contenuto qualcosa nel file
-            Pattern line_pattern = Pattern.compile("([^:]+):([^;]+);([^;]+);([^;]+);([^;]+);([^;]+)");
+            Pattern line_pattern = Pattern.compile("([^:]+):([^;]*);([^;]*);([^;]+);([^;]+);([^;]+)");
             String[] lines = file_content.split("\n");
 
             for (String line : lines) {

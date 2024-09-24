@@ -3,6 +3,7 @@ package gui.graphicsSettings.standard_builder;
 import files.Logger;
 import gui.custom.GFileChooser;
 import gui.graphicsSettings.ButtonIcons;
+import gui.graphicsSettings.GraphicsSettings;
 import gui.settingsFrame.SettingsFrame;
 
 import javax.swing.*;
@@ -10,9 +11,9 @@ import java.awt.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Icons_graphics implements GraphicsOption_builder<ButtonIcons> {
+public class ButtonIcons_builder implements GraphicsOption_builder<ButtonIcons> {
     private static final Pattern ICONS_PATTERN = Pattern.compile("icons\\(([^,]+),([^,]+),([^,]+),([^,]+)\\)");
-    private static final Image_graphics image_graphics = new Image_graphics();
+    private static final Image_builder image_graphics = new Image_builder();
 
     @Override
     public boolean equals(Object obj1, Object obj2) {
@@ -88,15 +89,21 @@ public class Icons_graphics implements GraphicsOption_builder<ButtonIcons> {
         String pres_path = icons.getPressedIcon().getDescription();
         String dis_path = icons.getDisabledIcon().getDescription();
 
-        JTextField std_field = mk_field(std_path);
-        JTextField rol_field = mk_field(rol_path);
-        JTextField pres_field = mk_field(pres_path);
-        JTextField dis_field = mk_field(dis_path);
+        JLabel std_field = new JLabel(std_path);
+        JLabel rol_field = new JLabel(rol_path);
+        JLabel pres_field = new JLabel(pres_path);
+        JLabel dis_field = new JLabel(dis_path);
 
         GFileChooser std_chooser = new GFileChooser(std_field, "png or jpg image files", "jpg", "png");
         GFileChooser rol_chooser = new GFileChooser(rol_field, "png or jpg image files","jpg", "png");
         GFileChooser pres_chooser = new GFileChooser(pres_field, "png or jpg image files","jpg", "png");
         GFileChooser dis_chooser = new GFileChooser(dis_field, "png or jpg image files","jpg", "png");
+
+        Color foreground = (Color) GraphicsSettings.active_theme.get_value("text_color");
+        std_field.setForeground(foreground);
+        rol_field.setForeground(foreground);
+        pres_field.setForeground(foreground);
+        dis_field.setForeground(foreground);
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -140,20 +147,20 @@ public class Icons_graphics implements GraphicsOption_builder<ButtonIcons> {
         String pres_path = icons.getPressedIcon().getDescription();
         String dis_path = icons.getDisabledIcon().getDescription();
 
-        ((JTextField) panel.getComponent(4)).setText(std_path);
-        ((JTextField) panel.getComponent(5)).setText(rol_path);
-        ((JTextField) panel.getComponent(6)).setText(pres_path);
-        ((JTextField) panel.getComponent(7)).setText(dis_path);
+        ((JLabel) panel.getComponent(4)).setText(std_path);
+        ((JLabel) panel.getComponent(5)).setText(rol_path);
+        ((JLabel) panel.getComponent(6)).setText(pres_path);
+        ((JLabel) panel.getComponent(7)).setText(dis_path);
     }
 
     @Override
     public ButtonIcons new_value(JPanel panel) {
         Component[] cps = panel.getComponents();
 
-        String std_path = ((JTextField) cps[4]).getText();
-        String rol_path = ((JTextField) cps[5]).getText();
-        String pres_path = ((JTextField) cps[6]).getText();
-        String dis_path = ((JTextField) cps[7]).getText();
+        String std_path = ((JLabel) cps[4]).getText();
+        String rol_path = ((JLabel) cps[5]).getText();
+        String pres_path = ((JLabel) cps[6]).getText();
+        String dis_path = ((JLabel) cps[7]).getText();
 
         return new ButtonIcons(
                 new ImageIcon(std_path),
@@ -161,17 +168,5 @@ public class Icons_graphics implements GraphicsOption_builder<ButtonIcons> {
                 new ImageIcon(pres_path),
                 new ImageIcon(dis_path)
         );
-    }
-
-    public static JTextField mk_field(String txt) {
-        JTextField field = new JTextField(txt);
-
-        field.setEditable(false);
-        field.setFocusable(false);
-        field.setOpaque(false);
-        field.setForeground(SettingsFrame.foreground);
-        field.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 0));
-
-        return field;
     }
 }

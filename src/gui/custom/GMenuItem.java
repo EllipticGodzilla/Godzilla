@@ -5,16 +5,12 @@ import gui.graphicsSettings.GraphicsSettings;
 import javax.swing.*;
 import java.awt.*;
 
-//    MENU ITEM GRAPHICS
 class GMenuItem extends JMenuItem {
-    private final String GRAPHICS_SETTING_BASE;
-
-    public GMenuItem(String txt, String settings_base) {
+    public GMenuItem(String txt) {
         super(txt);
-        this.GRAPHICS_SETTING_BASE = settings_base;
         this.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
-        this.setBackground((Color) GraphicsSettings.active_option.get_value(GRAPHICS_SETTING_BASE  + "_dropdown_background"));
-        this.setForeground((Color) GraphicsSettings.active_option.get_value(GRAPHICS_SETTING_BASE + "_dropdown_foreground"));
+        this.setOpaque(false);
+        this.setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_text_color"));
     }
 
     public void update_colors() {
@@ -28,11 +24,12 @@ class GMenuItem extends JMenuItem {
 
     private void update_colors(boolean active) {
         if (active) {
-            this.setBackground((Color) GraphicsSettings.active_option.get_value(GRAPHICS_SETTING_BASE + "_dropdown_selected_background"));
-            this.setForeground((Color) GraphicsSettings.active_option.get_value(GRAPHICS_SETTING_BASE + "_dropdown_selected_foreground"));
+            setOpaque(true);
+            this.setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_background"));
+            this.setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_text_color"));
         } else {
-            this.setBackground((Color) GraphicsSettings.active_option.get_value(GRAPHICS_SETTING_BASE + "_dropdown_background"));
-            this.setForeground((Color) GraphicsSettings.active_option.get_value(GRAPHICS_SETTING_BASE + "_dropdown_foreground"));
+            setOpaque(false);
+            this.setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_text_color"));
         }
     }
 }

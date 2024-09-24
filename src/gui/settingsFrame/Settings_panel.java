@@ -1,6 +1,7 @@
 package gui.settingsFrame;
 
 import gui.custom.*;
+import gui.graphicsSettings.GraphicsSettings;
 import gui.settingsFrame.file_settings_panels.ColorSettings_panel;
 
 import javax.swing.*;
@@ -10,20 +11,26 @@ import java.awt.event.ActionListener;
 public abstract class Settings_panel {
     private static final JPanel CONTENT_PANEL = new JPanel();
     private static final CascateMenu MENU_PANEL = new CascateMenu();
+    private static final GScrollPane MENU_SCROLL_PANE = new GScrollPane(MENU_PANEL);
     private static final JPanel MAIN_PANEL = new JPanel();
 
     public static void init() {
         MAIN_PANEL.setLayout(new GridBagLayout());
         CONTENT_PANEL.setLayout(new GridBagLayout());
 
-        MAIN_PANEL.setBackground(SettingsFrame.background);
-        CONTENT_PANEL.setBackground(SettingsFrame.background);
+        MAIN_PANEL.setOpaque(false);
+        CONTENT_PANEL.setOpaque(false);
 
         CONTENT_PANEL.setPreferredSize(new Dimension(550, 0));
 
-        GScrollPane menu_scroller = new GScrollPane(MENU_PANEL);
-        menu_scroller.setPreferredSize(new Dimension(250, 0));
-        menu_scroller.set_scrollbar_thickness(10);
+        Color list_bg = (Color) GraphicsSettings.active_theme.get_value("list_background");
+        MENU_SCROLL_PANE.getViewport().setBackground(list_bg);
+        MENU_SCROLL_PANE.setBorder(BorderFactory.createLineBorder(list_bg.darker()));
+        MENU_SCROLL_PANE.setPreferredSize(new Dimension(250, 0));
+        MENU_SCROLL_PANE.set_scrollbar_thickness(10);
+
+        //aggiorna i colori quando si cambia tema
+        GraphicsSettings.run_at_theme_change(Settings_panel::update_color);
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -32,7 +39,7 @@ public abstract class Settings_panel {
         c.gridy = 0;
         c.weightx = 0;
         c.weighty = 1;
-        MAIN_PANEL.add(menu_scroller, c);
+        MAIN_PANEL.add(MENU_SCROLL_PANE, c);
 
         c.weightx = 1;
         c.gridx = 1;
@@ -41,7 +48,14 @@ public abstract class Settings_panel {
         add_std_settings();
     }
 
+    public static void update_color() {
+        MENU_SCROLL_PANE.update_colors();
+        MENU_PANEL.updated_color();
+    }
+
     public static JPanel load() {
+        MENU_PANEL.unselect();
+
         return MAIN_PANEL;
     }
 

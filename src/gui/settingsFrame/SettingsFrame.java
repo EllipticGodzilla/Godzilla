@@ -1,6 +1,8 @@
 package gui.settingsFrame;
 
 import gui.Godzilla_frame;
+import gui.graphicsSettings.ButtonIcons;
+import gui.graphicsSettings.GraphicsSettings;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,8 +16,6 @@ public abstract class SettingsFrame {
     private static final JButton cancel_button = new JButton();
     private static final JButton apply_button = new JButton();
 
-    public static Color foreground;
-    public static Color background;
     public static final int FILE_MANAGER = 0;
     public static final int SETTINGS = 1;
     public static final int MOD_MANAGER = 2;
@@ -24,22 +24,12 @@ public abstract class SettingsFrame {
     public static final int DNS_MANAGER = 5;
 
     public static void init() {
-        background = new Color(58, 61, 63);
-        foreground = Color.lightGray;
-
         FileManager_panel.init();
         Settings_panel.init();
 
         //inizializza i pulsanti ok, cancel, apply e lo spacer che divide il pannello con il contenuto dai pulsanti
-        ok_button.setIcon(new ImageIcon(SettingsFrame.class.getResource("/images/ok.png")));
-        ok_button.setPressedIcon(new ImageIcon(SettingsFrame.class.getResource("/images/ok_pres.png")));
-        ok_button.setRolloverIcon(new ImageIcon(SettingsFrame.class.getResource("/images/ok_sel.png")));
-        cancel_button.setIcon(new ImageIcon(SettingsFrame.class.getResource("/images/cancel.png")));
-        cancel_button.setPressedIcon(new ImageIcon(SettingsFrame.class.getResource("/images/cancel_pres.png")));
-        cancel_button.setRolloverIcon(new ImageIcon(SettingsFrame.class.getResource("/images/cancel_sel.png")));
-        apply_button.setIcon(new ImageIcon(SettingsFrame.class.getResource("/images/apply.png")));
-        apply_button.setPressedIcon(new ImageIcon(SettingsFrame.class.getResource("/images/apply_pres.png")));
-        apply_button.setRolloverIcon(new ImageIcon(SettingsFrame.class.getResource("/images/apply_sel.png")));
+        update_color();
+        GraphicsSettings.run_at_theme_change(SettingsFrame::update_color);
 
         ok_button.setPreferredSize(new Dimension(95, 20));
         cancel_button.setPreferredSize(new Dimension(95, 20));
@@ -65,12 +55,11 @@ public abstract class SettingsFrame {
         sep.setPreferredSize(new Dimension(0, 2));
 
         JPanel spacer = new JPanel();
-        spacer.setBackground(background);
+        spacer.setOpaque(false);
         spacer.setBorder(null);
 
         //inizializza il frame ed aggiunge tutti i componenti
         frame.getContentPane().setLayout(new GridBagLayout());
-        frame.getContentPane().setBackground(new Color(58, 61, 63));
         frame.setMinimumSize(new Dimension(800, 420));
 
         frame.addWindowListener(new WindowListener() {
@@ -119,6 +108,24 @@ public abstract class SettingsFrame {
 
         c.gridx = 3;
         frame.getContentPane().add(apply_button, c);
+    }
+
+    public static void update_color() {
+        frame.getContentPane().setBackground((Color) GraphicsSettings.active_theme.get_value("frame_background"));
+
+        ButtonIcons ok_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("settings_ok");
+        ButtonIcons annulla_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("settings_annulla");
+        ButtonIcons apply_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("settings_apply");
+
+        ok_button.setIcon(ok_icons.getStandardIcon());
+        ok_button.setRolloverIcon(ok_icons.getRolloverIcon());
+        ok_button.setPressedIcon(ok_icons.getPressedIcon());
+        cancel_button.setIcon(annulla_icons.getStandardIcon());
+        cancel_button.setRolloverIcon(annulla_icons.getRolloverIcon());
+        cancel_button.setPressedIcon(annulla_icons.getPressedIcon());
+        apply_button.setIcon(apply_icons.getStandardIcon());
+        apply_button.setRolloverIcon(apply_icons.getRolloverIcon());
+        apply_button.setPressedIcon(apply_icons.getPressedIcon());
     }
 
     public static void show(int type) {

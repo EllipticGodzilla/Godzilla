@@ -1,5 +1,7 @@
 package gui.custom;
 
+import gui.graphicsSettings.GraphicsSettings;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -11,10 +13,10 @@ public class GTextArea extends JTextArea {
     public GTextArea(String txt) {
         super(txt);
 
-        this.setBackground(new Color(58, 61, 63));
+        this.setOpaque(false);
         this.setBorder(null);
         this.setFont(new Font("Charter Bd BT", Font.PLAIN, 13));
-        this.setForeground(new Color(188, 191,  193));
+        this.setForeground((Color) GraphicsSettings.active_theme.get_value("text_color"));
 
         calculate_size();
 

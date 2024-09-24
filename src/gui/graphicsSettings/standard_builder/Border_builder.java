@@ -3,6 +3,7 @@ package gui.graphicsSettings.standard_builder;
 import files.Logger;
 import gui.custom.ColorPanel;
 import gui.custom.GIntegerField;
+import gui.graphicsSettings.GraphicsSettings;
 import gui.settingsFrame.SettingsFrame;
 
 import javax.swing.*;
@@ -11,17 +12,13 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Border_graphics implements GraphicsOption_builder<Border> {
+public class Border_builder implements GraphicsOption_builder<Border> {
     private static final Pattern BORDER_PATTERN = Pattern.compile("border\\((?:color\\(([0-9]+),([0-9]+),([0-9]+)\\))?,?([0-9]*),?(?:insets\\(([0-9]+),([0-9]+),([0-9]+),([0-9]+)\\))?\\)");
-    private static Color_graphics color_graphics = new Color_graphics();
+    private static Color_builder color_graphics = new Color_builder();
 
     @Override
     public boolean equals(Object obj1, Object obj2) {
@@ -201,7 +198,7 @@ public class Border_graphics implements GraphicsOption_builder<Border> {
         JLabel color_label = new JLabel("color =");
         JPanel color_filler = new JPanel();
 
-        color_label.setForeground(SettingsFrame.foreground);
+        color_label.setForeground((Color) GraphicsSettings.active_theme.get_value("text_color"));
         color_filler.setOpaque(false);
         color_filler.setLayout(new GridBagLayout());
 
@@ -254,12 +251,18 @@ public class Border_graphics implements GraphicsOption_builder<Border> {
         JLabel bottom_label = new JLabel("bottom:");
         JLabel right_label = new JLabel("right:");
 
-        GIntegerField top_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
-        GIntegerField left_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
-        GIntegerField bottom_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
-        GIntegerField right_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
+        GIntegerField top_spinner = new GIntegerField(-1, 255);
+        GIntegerField left_spinner = new GIntegerField(-1, 255);
+        GIntegerField bottom_spinner = new GIntegerField(-1, 255);
+        GIntegerField right_spinner = new GIntegerField(-1, 255);
 
         JPanel insets_filler = new JPanel();
+
+        //fa aggiornare i colori a tutti i GIntegerField quando si cambia tema
+        GraphicsSettings.run_at_theme_change(top_spinner::update_color);
+        GraphicsSettings.run_at_theme_change(left_spinner::update_color);
+        GraphicsSettings.run_at_theme_change(bottom_spinner::update_color);
+        GraphicsSettings.run_at_theme_change(right_spinner::update_color);
 
         //inizializza i componenti
         top_spinner.set_value(top);
@@ -269,11 +272,13 @@ public class Border_graphics implements GraphicsOption_builder<Border> {
 
         insets_filler.setOpaque(false);
 
-        insets_label.setForeground(SettingsFrame.foreground);
-        top_label.setForeground(SettingsFrame.foreground);
-        left_label.setForeground(SettingsFrame.foreground);
-        bottom_label.setForeground(SettingsFrame.foreground);
-        right_label.setForeground(SettingsFrame.foreground);
+        Color foreground = (Color) GraphicsSettings.active_theme.get_value("text_color");
+
+        insets_label.setForeground(foreground);
+        top_label.setForeground(foreground);
+        left_label.setForeground(foreground);
+        bottom_label.setForeground(foreground);
+        right_label.setForeground(foreground);
 
         //aggiunge tutti i componenti al pannello
         GridBagConstraints c = new GridBagConstraints();

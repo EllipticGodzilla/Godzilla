@@ -18,7 +18,7 @@ public class Main {
         Runtime.getRuntime().addShutdownHook(shut_down);
 
         File_interface.init();
-        GraphicsSettings.load_files();
+        GraphicsSettings.load_from_files();
         JFrame main_frame = Godzilla_frame.init();
         File_cipher.init();
         SettingsFrame.init();

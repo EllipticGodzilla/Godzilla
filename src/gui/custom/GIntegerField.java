@@ -1,6 +1,10 @@
 package gui.custom;
 
+import gui.graphicsSettings.GraphicsSettings;
+import gui.graphicsSettings.GraphicsTheme;
+
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
@@ -13,21 +17,23 @@ public class GIntegerField extends JTextField {
 
     private String prev_value = "";
 
-    public GIntegerField(Color background, Color foreground, Color border, int min, int max) {
+    public GIntegerField(int min, int max) {
         super();
         this.MAX = max;
         this.MIN = min;
 
         setPreferredSize(new Dimension(35, 20));
-        setForeground(foreground);
-        setBackground(background);
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(border),
-                BorderFactory.createEmptyBorder(4, 4, 0, 0)
-        ));
+
+        update_color();
 
         addFocusListener(FOCUS_LISTENER);
         addKeyListener(KEY_LISTENER);
+    }
+
+    public void update_color() {
+        setForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
+        setBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+        setBorder((Border) GraphicsSettings.active_theme.get_value("input_border"));
     }
 
     public void on_validation(Runnable action) {

@@ -5,11 +5,11 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.event.ActionListener;
 
 public class GFileChooser extends JButton {
-    private JTextField output;
+    private JLabel output;
     private final JFrame CHOOSER_FRAME = new JFrame();
     private final JFileChooser CHOOSER_FILE = new JFileChooser();
 
-    public GFileChooser(JTextField output, String description, String... extensions) {
+    public GFileChooser(JLabel output, String description, String... extensions) {
         super();
         this.output = output;
 

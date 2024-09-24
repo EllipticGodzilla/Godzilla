@@ -1,5 +1,8 @@
 package gui.custom;
 
+import gui.graphicsSettings.GraphicsSettings;
+import gui.graphicsSettings.GraphicsTheme;
+
 import javax.swing.*;
 import javax.swing.plaf.ScrollBarUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
@@ -10,14 +13,22 @@ public class GScrollPane extends JScrollPane {
         super(c);
 
         this.setAutoscrolls(true);
-        this.setBorder(BorderFactory.createLineBorder(new Color(72, 74, 75)));
-        this.setBackground(new Color(128, 131, 133));
+        this.setBorder(null);
     }
 
-    public GScrollPane(Component c, int vertical_policy, int horizontal_policy) {
-        super(c, vertical_policy, horizontal_policy);
-        this.setBorder(BorderFactory.createLineBorder(new Color(72, 74, 75)));
-        this.setBackground(new Color(128, 131, 133));
+    public void update_colors() {
+        this.getViewport().setBackground((Color) GraphicsSettings.active_theme.get_value("list_background"));
+
+        ((GScrollBarUI) this.getHorizontalScrollBar().getUI()).update_colors();
+        ((GScrollBarUI) this.getVerticalScrollBar().getUI()).update_colors();
+
+        Color rail_color = (Color) GraphicsSettings.active_theme.get_value("scroll_bar_rail_color");
+        this.getHorizontalScrollBar().setBackground(rail_color);
+        this.getVerticalScrollBar().setBackground(rail_color);
+        this.getHorizontalScrollBar().setBorder(BorderFactory.createLineBorder(rail_color.darker()));
+        this.getVerticalScrollBar().setBorder(BorderFactory.createLineBorder(rail_color.darker()));
+
+        this.getHorizontalScrollBar().repaint();
     }
 
     public void set_scrollbar_thickness(int thickness) {
@@ -35,29 +46,11 @@ public class GScrollPane extends JScrollPane {
     public JScrollBar createVerticalScrollBar() {
         JScrollBar scrollBar = super.createVerticalScrollBar();
 
-        scrollBar.setUI(new BasicScrollBarUI() {
-            @Override
-            protected void configureScrollBarColors() {
-                this.thumbColor = new Color(78, 81, 83);
-                this.thumbDarkShadowColor = new Color(58, 61, 63);
-                this.thumbHighlightColor = new Color(108, 111, 113);
-            }
+        scrollBar.setUI(new GScrollBarUI());
 
-            static class null_button extends JButton {
-                public null_button() {
-                    super();
-                    this.setPreferredSize(new Dimension(0, 0));
-                }
-            }
-
-            @Override
-            protected JButton createDecreaseButton(int orientation) { return new null_button(); }
-            @Override
-            protected JButton createIncreaseButton(int orientation) { return new null_button(); }
-        });
-
-        scrollBar.setBackground(new Color(128, 131, 133));
-        scrollBar.setBorder(BorderFactory.createLineBorder(new Color(72, 74, 75)));
+        Color rail_color = (Color) GraphicsSettings.active_theme.get_value("scroll_bar_rail_color");
+        scrollBar.setBackground(rail_color);
+        scrollBar.setBorder(BorderFactory.createLineBorder(rail_color.darker()));
 
         return scrollBar;
     }
@@ -66,30 +59,41 @@ public class GScrollPane extends JScrollPane {
     public JScrollBar createHorizontalScrollBar() {
         JScrollBar scrollBar = super.createHorizontalScrollBar();
 
-        scrollBar.setUI(new BasicScrollBarUI() {
-            @Override
-            protected void configureScrollBarColors() {
-                this.thumbColor = new Color(78, 81, 83);
-                this.thumbDarkShadowColor = new Color(58, 61, 63);
-                this.thumbHighlightColor = new Color(108, 111, 113);
-            }
-
-            static class null_button extends JButton {
-                public null_button() {
-                    super();
-                    this.setPreferredSize(new Dimension(0, 0));
-                }
-            }
-
-            @Override
-            protected JButton createDecreaseButton(int orientation) { return new null_button(); }
-            @Override
-            protected JButton createIncreaseButton(int orientation) { return new null_button(); }
-        });
+        scrollBar.setUI(new GScrollBarUI());
 
         scrollBar.setBackground(new Color(128, 131, 133));
         scrollBar.setBorder(BorderFactory.createLineBorder(new Color(72, 74, 75)));
 
         return scrollBar;
+    }
+
+    private static class GScrollBarUI extends BasicScrollBarUI {
+        @Override
+        protected void configureScrollBarColors() {
+            update_colors();
+        }
+
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            super.paintThumb(g, c, thumbBounds);
+        }
+
+        public void update_colors() {
+            this.thumbColor = (Color) GraphicsSettings.active_theme.get_value("scroll_bar_thumb_color");
+            this.thumbDarkShadowColor = (Color) GraphicsSettings.active_theme.get_value("scroll_bar_thumb_darkshadow_color");
+            this.thumbHighlightColor = (Color) GraphicsSettings.active_theme.get_value("scroll_bar_thumb_highlight_color");
+        }
+
+        static class null_button extends JButton {
+            public null_button() {
+                super();
+                this.setPreferredSize(new Dimension(0, 0));
+            }
+        }
+
+        @Override
+        protected JButton createDecreaseButton(int orientation) { return new null_button(); }
+        @Override
+        protected JButton createIncreaseButton(int orientation) { return new null_button(); }
     }
 }

@@ -1,6 +1,9 @@
 package gui.custom;
 
+import gui.graphicsSettings.GraphicsSettings;
+
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.plaf.metal.MetalComboBoxButton;
 import java.awt.*;
 
@@ -8,15 +11,23 @@ public class GComboBox extends JComboBox<String> {
     public GComboBox(String[] list) {
         super(list);
 
-        this.setBackground(new Color(108, 111, 113));
-        this.setForeground(new Color(218, 221, 223));
-        this.setBorder(BorderFactory.createLineBorder(new Color(68, 71, 73)));
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+        this.setForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
+        this.setBorder((Border) GraphicsSettings.active_theme.get_value(("input_border")));
 
         ComboBoxRenderer renderer = new ComboBoxRenderer();
         renderer.setPreferredSize(new Dimension(100, 16));
         renderer.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
         this.setRenderer(renderer);
         ((MetalComboBoxButton) this.getComponents()[0]).setBorder(null);
+    }
+
+    public void update_color() {
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+        this.setForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
+        this.setBorder((Border) GraphicsSettings.active_theme.get_value(("input_border")));
+
+        ((ComboBoxRenderer) this.getRenderer()).list_init = true; //aggiorna i colori della lista
     }
 
     public void set_list(String[] new_list) {
@@ -39,19 +50,21 @@ public class GComboBox extends JComboBox<String> {
 
         @Override
         public Component getListCellRendererComponent(JList<? extends String> list, String value, int index, boolean isSelected, boolean cellHasFocus) {
-            if (list_init) { //setta
-                list.setSelectionBackground(new Color(108, 111, 113));
-                list.setSelectionForeground(new Color(218, 221, 223));
+            if (list_init) {
+                list.setSelectionBackground((Color) GraphicsSettings.active_theme.get_value("input_background"));
+                list.setSelectionForeground((Color) GraphicsSettings.active_theme.get_value("input_text_color"));
                 list.setBorder(null);
 
                 list_init = false;
             }
 
             if (isSelected) {
-                setBackground(new Color(158, 161, 163));
+                setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_background"));
+                setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_selected_text_color"));
             }
             else {
-                setBackground(new Color(108, 111, 113));
+                setBackground((Color) GraphicsSettings.active_theme.get_value("dropdown_background"));
+                setForeground((Color) GraphicsSettings.active_theme.get_value("dropdown_text_color"));
             }
 
             setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));

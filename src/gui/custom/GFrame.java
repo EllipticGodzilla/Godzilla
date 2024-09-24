@@ -29,9 +29,9 @@ public class GFrame extends JFrame {
     public GFrame(String name) {
         super(name);
 
-        this.FILE = new GMenu("File", "title_bar");
-        this.CONNECTION = new GMenu("Connection", "title_bar");
-        this.MOD = new GMenu("Mod", "title_bar");
+        this.FILE = new GMenu("File");
+        this.CONNECTION = new GMenu("Connection");
+        this.MOD = new GMenu("Mod");
         this.ICONIZE = new JButton();
         this.MAXIMIZE = new JButton();
         this.EXIT = new JButton();
@@ -44,7 +44,7 @@ public class GFrame extends JFrame {
         ICONIZE.setContentAreaFilled(false);
 
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.setBackground(new Color(58, 61, 63));
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("frame_background"));
         this.setSize(new Dimension(900, 500));
         this.setUndecorated(true);
 
@@ -53,10 +53,13 @@ public class GFrame extends JFrame {
         this.addMouseMotionListener(resizer);
 
         update_colors();
+        GraphicsSettings.run_at_theme_change(this::update_colors);
     }
 
     public void update_colors() {
-        title_bar.setBackground((Color) GraphicsSettings.active_option.get_value("title_bar_background"));
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("frame_background"));
+
+        title_bar.setBackground((Color) GraphicsSettings.active_theme.get_value("title_bar_background"));
         FILE.update_colors();
         CONNECTION.update_colors();
         MOD.update_colors();
@@ -163,11 +166,11 @@ public class GFrame extends JFrame {
     //    INITIALIZING GUI PIECES
 
     private void init_file() {
-        GMenuItem manage = new GMenuItem("Manage files", "title_bar"); //puoi modificare il contenuto dei file facilmente, non potendo farlo aprendo i file normalmente essendo cifrati
-        GMenuItem reload = new GMenuItem("Reload all files from disk", "title_bar"); //ricarica tutti i file dal disco
-        GMenuItem save  = new GMenuItem("Update all file", "title_bar"); //salva tutte le informazioni nel disco come se stesse chiudendo il programma in questo momento
-        GMenuItem settings = new GMenuItem("Settings", "title_bar"); //puoi modificare i colori standard
-        GMenuItem exit = new GMenuItem("Exit", "title_bar"); //chiude il programma
+        GMenuItem manage = new GMenuItem("Manage files"); //puoi modificare il contenuto dei file facilmente, non potendo farlo aprendo i file normalmente essendo cifrati
+        GMenuItem reload = new GMenuItem("Reload all files from disk"); //ricarica tutti i file dal disco
+        GMenuItem save  = new GMenuItem("Update all file"); //salva tutte le informazioni nel disco come se stesse chiudendo il programma in questo momento
+        GMenuItem settings = new GMenuItem("Settings"); //puoi modificare i colori standard
+        GMenuItem exit = new GMenuItem("Exit"); //chiude il programma
 
         manage.addActionListener(FILE_MANAGE_LISTENER);
         reload.addActionListener(FILE_RELOAD_LISTENER);
@@ -185,9 +188,9 @@ public class GFrame extends JFrame {
     }
 
     private void init_mod() {
-        JMenuItem manage = new GMenuItem("Manage mods", "title_bar"); //puoi importare o rimuovere mod
-        JMenuItem reload_all = new GMenuItem("Reload all mods from disk", "title_bar"); //ricarica tutte le mod dal disco
-        JMenuItem manage_startup = new GMenuItem("Manage startup mods", "title_bar"); //imposta o rimuove le mod da eseguire all'avvio
+        JMenuItem manage = new GMenuItem("Manage mods"); //puoi importare o rimuovere mod
+        JMenuItem reload_all = new GMenuItem("Reload all mods from disk"); //ricarica tutte le mod dal disco
+        JMenuItem manage_startup = new GMenuItem("Manage startup mods"); //imposta o rimuove le mod da eseguire all'avvio
 
         manage.addActionListener(MOD_MANAGE_LISTENER);
         reload_all.addActionListener(MOD_RELOAD_LISTENER);
@@ -201,9 +204,9 @@ public class GFrame extends JFrame {
     }
 
     private void init_connections() {
-        JMenuItem manage_server = new GMenuItem("Manage servers", "title_bar"); //puoi modificare nome, link, dns di riferimento ed in futuro ci saranno anche varie impostazioni di sicurezza
-        JMenuItem manage_dns = new GMenuItem("Manage dns", "title_bar"); //aggiungere / rimuovere dns, modificare la chiave pubblica associata
-        JMenuItem add = new GMenuItem("Add server", "title_bar"); //aggiungi un nuovo server
+        JMenuItem manage_server = new GMenuItem("Manage servers"); //puoi modificare nome, link, dns di riferimento e in futuro ci saranno anche varie impostazioni di sicurezza
+        JMenuItem manage_dns = new GMenuItem("Manage dns"); //aggiungere / rimuovere dns, modificare la chiave pubblica associata
+        JMenuItem add = new GMenuItem("Add server"); //aggiungi un nuovo server
 
         manage_server.addActionListener(CONN_SERVERMANAGE_LISTENER);
         manage_dns.addActionListener(CONN_DNSMANAGE_LISTENER);
@@ -217,9 +220,9 @@ public class GFrame extends JFrame {
     }
 
     private void set_buttons_icon() {
-        ButtonIcons max_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("title_bar_maximize");
-        ButtonIcons min_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("title_bar_iconize");
-        ButtonIcons close_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("title_bar_close");
+        ButtonIcons max_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("title_bar_maximize");
+        ButtonIcons min_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("title_bar_iconize");
+        ButtonIcons close_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("title_bar_close");
 
         MAXIMIZE.setIcon(max_icons.getStandardIcon());
         MAXIMIZE.setRolloverIcon(max_icons.getRolloverIcon());
@@ -406,18 +409,9 @@ class FrameResizer extends MouseAdapter {
         }
     }
 
-    /**
-     *  Resize the component ensuring location and size is within the bounds
-     *  of the parent container and that the size is within the minimum and
-     *  maximum constraints.
-     *
-     *  All calculations are done using the bounds of the component when the
-     *  resizing started.
-     */
     @Override
-    public void mouseDragged(MouseEvent e)
-    {
-        if (resizing == false) return;
+    public void mouseDragged(MouseEvent e) {
+        if (!resizing) return;
 
         Component source = e.getComponent();
         Point dragged = e.getPoint();

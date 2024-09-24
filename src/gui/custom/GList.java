@@ -1,7 +1,6 @@
 package gui.custom;
 
-import files.Database;
-import files.Pair;
+import gui.graphicsSettings.GraphicsSettings;
 import network.Server_manager;
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -16,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /*
- * utilizzando un estensione di JList viene più semplice ma aggiungere e rimuovere elementi dalla lista in modo dinamico può provocare problemi grafici
+ * Utilizzando un estensione di JList viene più semplice ma aggiungere e rimuovere elementi dalla lista in modo dinamico può provocare problemi grafici
  * dove la lista viene mostrata vuota finché non le si dà un nuovo update, di conseguenza ho creato la mia versione di JList utilizzando varie JTextArea
  * e partendo da un JPanel.
  * Non so bene da che cosa sia dovuto il problema con JList ma sembra essere risolto utilizzando la mia versione
@@ -26,33 +25,22 @@ public class GList extends JPanel {
     private int selected_index = -1;
 
     private final JPanel LIST_PANEL = new JPanel(); //pannello che contiene tutte le JTextArea della lista
-    protected Color std_backg;
-    protected Color std_foreg;
-    protected Color sel_backg;
-    protected Color sel_foreg;
-    protected Border sel_border;
 
     private Constructor<?> popupMenu = null;
 
-    public GList(Color backg, Color foreg, Color sel_foreg, Color sel_backg, Border sel_border) {
+    public GList() {
         super();
         this.setLayout(new GridBagLayout());
-        this.std_backg = backg;
-        this.std_foreg = foreg;
-        this.sel_foreg = sel_foreg;
-        this.sel_backg = sel_backg;
-        this.sel_border = sel_border;
-
-        this.setBackground(backg);
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("list_background"));
         this.setFont(new Font("custom_list", Font.BOLD, 11));
 
         JPanel filler = new JPanel();
-        filler.setBackground(backg);
+        filler.setOpaque(false);
         filler.setFocusable(false);
         filler.setBorder(null);
 
         LIST_PANEL.setLayout(new GridBagLayout());
-        LIST_PANEL.setBackground(this.getBackground());
+        LIST_PANEL.setOpaque(false);
 
         GridBagConstraints c = new GridBagConstraints();
 
@@ -68,19 +56,12 @@ public class GList extends JPanel {
         this.add(filler, c);
     }
 
-    public void change_colors(Color backg, Color foreg, Color sel_backg, Color sel_foreg, Border sel_border) {
-        this.std_backg = backg;
-        this.std_foreg = foreg;
-        this.sel_backg = sel_backg;
-        this.sel_foreg = sel_foreg;
-        this.sel_border = sel_border;
+    public void update_colors() {
+        this.setBackground((Color) GraphicsSettings.active_theme.get_value("list_background"));
 
         for (Component list_item : LIST_PANEL.getComponents()) {
             ((ListCell) list_item).update_colors();
         }
-
-        this.setBackground(backg);
-        this.getComponents()[1].setBackground(backg); //aggiorna lo sfondo del filler
     }
 
     public void set_popup(Class<?> PopupMenu) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
@@ -185,14 +166,16 @@ public class GList extends JPanel {
             this.PARENT_LIST = list;
             this.MY_INDEX = index;
 
-            //imposta tutti i colori
-            this.setForeground(new Color(44, 46, 47));
-            this.setBackground(list.std_backg);
+            //imposta tutti i colori standard
+            this.setForeground((Color) GraphicsSettings.active_theme.get_value("list_text_color"));
+            this.setOpaque(false);
+            this.setBackground((Color) GraphicsSettings.active_theme.get_value("list_selected_background"));
+            this.setCaretColor((Color) GraphicsSettings.active_theme.get_value("list_background"));
+            this.setSelectionColor((Color) GraphicsSettings.active_theme.get_value("list_background"));
             this.setFont(new Font("custom_list", Font.BOLD, 11));
             this.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
 
             this.setEditable(false);
-            this.setCaretColor(list.std_backg);
             this.setCursor(null);
 
             this.addKeyListener(KEY_LISTENER);
@@ -261,41 +244,31 @@ public class GList extends JPanel {
                     ((ListCell) PARENT_LIST.LIST_PANEL.getComponent(PARENT_LIST.selected_index)).unselect();
                 }
 
-                //imposta questa JTextArea come selezionata
-                setBackground(PARENT_LIST.sel_backg);
-                setForeground(PARENT_LIST.sel_foreg);
-                setBorder(PARENT_LIST.sel_border);
-                setCaretColor(PARENT_LIST.sel_backg);
-                setSelectionColor(PARENT_LIST.sel_backg);
-
                 PARENT_LIST.selected_index = MY_INDEX;
+                update_colors();
             }
         }
 
         public void unselect() {
-            setBackground(PARENT_LIST.std_backg);
-            setForeground(PARENT_LIST.std_foreg);
-            setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
-            setCaretColor(PARENT_LIST.std_backg);
-            setSelectionColor(PARENT_LIST.std_backg);
-
             PARENT_LIST.selected_index = -1;
+            update_colors();
         }
 
         public void update_colors() {
             if (PARENT_LIST.selected_index == MY_INDEX) {
-                setBackground(PARENT_LIST.sel_backg);
-                setForeground(PARENT_LIST.sel_foreg);
-                setBorder(PARENT_LIST.sel_border);
-                setCaretColor(PARENT_LIST.sel_backg);
-                setSelectionColor(PARENT_LIST.sel_backg);
+                setOpaque(true); //mostra il background
+                setForeground((Color) GraphicsSettings.active_theme.get_value("list_selected_text_color"));
+                setBorder((Border) GraphicsSettings.active_theme.get_value("list_selected_border"));
+                setBackground((Color) GraphicsSettings.active_theme.get_value("list_selected_background"));
+                setSelectionColor(getBackground());
+                setCaretColor(getBackground());
             }
             else {
-                setBackground(PARENT_LIST.std_backg);
-                setForeground(PARENT_LIST.std_foreg);
+                setOpaque(false); //non mostra il background
+                setForeground((Color) GraphicsSettings.active_theme.get_value("list_text_color"));
                 setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 0));
-                setCaretColor(PARENT_LIST.std_backg);
-                setSelectionColor(PARENT_LIST.std_backg);
+                setSelectionColor((Color) GraphicsSettings.active_theme.get_value("list_background"));
+                setCaretColor((Color) GraphicsSettings.active_theme.get_value("list_background"));
             }
         }
     }

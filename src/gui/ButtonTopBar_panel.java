@@ -35,7 +35,7 @@ public abstract class ButtonTopBar_panel {
     protected static JPanel init() throws IOException {
         if (buttons_container == null) {
             buttons_panel = new JPanel();
-            buttons_panel.setBackground((Color) GraphicsSettings.active_option.get_value("button_top_bar_background"));
+            buttons_panel.setOpaque(false);
             buttons_panel.setLayout(new GridBagLayout());
             buttons_panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 10));
 
@@ -50,6 +50,7 @@ public abstract class ButtonTopBar_panel {
             buttons_container.add(stop_mod);
 
             update_colors();
+            GraphicsSettings.run_at_theme_change(ButtonTopBar_panel::update_colors);
 
             right_shift.setBorder(null);
             left_shift.setBorder(null);
@@ -91,12 +92,11 @@ public abstract class ButtonTopBar_panel {
     }
 
     public static void update_colors() {
-        buttons_container.setBackground((Color) GraphicsSettings.active_option.get_value("button_top_bar_background"));
-        buttons_panel.setBackground((Color) GraphicsSettings.active_option.get_value("button_top_bar_background"));
+        buttons_container.setBackground((Color) GraphicsSettings.active_theme.get_value("frame_background"));
 
-        ButtonIcons right_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("button_top_bar_right_shift");
-        ButtonIcons left_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("button_top_bar_left_shift");
-        ButtonIcons stop_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("button_top_bar_stop_mod");
+        ButtonIcons right_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("button_top_bar_right_shift");
+        ButtonIcons left_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("button_top_bar_left_shift");
+        ButtonIcons stop_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("button_top_bar_stop_mod");
 
         right_shift.setIcon(right_icons.getStandardIcon());
         right_shift.setRolloverIcon(right_icons.getRolloverIcon());

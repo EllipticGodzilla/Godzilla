@@ -3,6 +3,7 @@ package gui.graphicsSettings.standard_builder;
 import files.Logger;
 import gui.custom.ColorPanel;
 import gui.custom.GIntegerField;
+import gui.graphicsSettings.GraphicsSettings;
 import gui.settingsFrame.SettingsFrame;
 
 import javax.swing.*;
@@ -10,7 +11,7 @@ import java.awt.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Color_graphics implements GraphicsOption_builder<Color> {
+public class Color_builder implements GraphicsOption_builder<Color> {
     private static final Pattern COLOR_PATTERN = Pattern.compile("color\\(([0-9]+),([0-9]+),([0-9]+)\\)");
 
     @Override
@@ -53,9 +54,9 @@ public class Color_graphics implements GraphicsOption_builder<Color> {
         int b = color.getBlue();
 
         //definizione degli elementi
-        GIntegerField red_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
-        GIntegerField blue_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
-        GIntegerField green_spinner = new GIntegerField(SettingsFrame.background.brighter(), SettingsFrame.foreground, SettingsFrame.background.darker().darker(), -1, 255);
+        GIntegerField red_spinner = new GIntegerField(-1, 255);
+        GIntegerField blue_spinner = new GIntegerField(-1, 255);
+        GIntegerField green_spinner = new GIntegerField(-1, 255);
 
         JLabel r_label = new JLabel("r:");
         JLabel g_label = new JLabel("g:");
@@ -64,14 +65,20 @@ public class Color_graphics implements GraphicsOption_builder<Color> {
         ColorPanel ex_color = new ColorPanel();
         JPanel filler = new JPanel();
 
+        //fa aggiornare i colori a tutti i GIntegerField quando si cambia tema
+        GraphicsSettings.run_at_theme_change(red_spinner::update_color);
+        GraphicsSettings.run_at_theme_change(blue_spinner::update_color);
+        GraphicsSettings.run_at_theme_change(green_spinner::update_color);
+
         //inizializzo
         red_spinner.set_value(r);
         green_spinner.set_value(g);
         blue_spinner.set_value(b);
 
-        r_label.setForeground(SettingsFrame.foreground);
-        g_label.setForeground(SettingsFrame.foreground);
-        b_label.setForeground(SettingsFrame.foreground);
+        Color foreground = (Color) GraphicsSettings.active_theme.get_value("text_color");
+        r_label.setForeground(foreground);
+        g_label.setForeground(foreground);
+        b_label.setForeground(foreground);
 
         ex_color.set_color(r, g, b);
 

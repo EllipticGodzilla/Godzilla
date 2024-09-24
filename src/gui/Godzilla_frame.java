@@ -36,7 +36,7 @@ public abstract class Godzilla_frame {
 
             //inizializza la gui principale (tutti i pannelli tranne Temp Panels)
             JPanel content_panel = new JPanel();
-            content_panel.setBackground(new Color(58, 61, 63));
+            content_panel.setOpaque(false);
             content_panel.setLayout(new GridBagLayout());
 
             GridBagConstraints c = new GridBagConstraints();
@@ -70,14 +70,14 @@ public abstract class Godzilla_frame {
             c.gridheight = 2;
             content_panel.add(central_terminal, c);
 
-            GLayeredPane lp = new GLayeredPane();
+            GLayeredPane layered_panel = new GLayeredPane();
             content_panel.setBounds(0, 0, 900, 663);
-            lp.add_fullscreen(content_panel, JLayeredPane.DEFAULT_LAYER);
-            lp.add(temp_panel, JLayeredPane.POPUP_LAYER);
+            layered_panel.add_fullscreen(content_panel, JLayeredPane.DEFAULT_LAYER);
+            layered_panel.add(temp_panel, JLayeredPane.POPUP_LAYER);
 
-            godzilla_frame.setLayeredPane(lp);
+            godzilla_frame.setLayeredPane(layered_panel);
             int menu_height = godzilla_frame.init_title_bar();
-            lp.set_menu_height(menu_height - 2);
+            layered_panel.set_menu_height(menu_height - 2);
 
             Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
             godzilla_frame.setLocation(
@@ -103,10 +103,6 @@ public abstract class Godzilla_frame {
             });
         }
         return godzilla_frame;
-    }
-
-    public static void update_colors() {
-        godzilla_frame.update_colors();
     }
 
     public static void set_title(String title) {

@@ -29,20 +29,14 @@ public abstract class ServerList_panel extends Database {
     protected static JPanel init() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, IOException {
         if (serverL_panel == null) {
             serverL_panel = new JPanel();
-            serverL_panel.setBackground((Color) GraphicsSettings.active_option.get_value("server_panel_background"));
+            serverL_panel.setOpaque(false);
             serverL_panel.setLayout(new GridBagLayout());
             serverL_panel.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 5));
 
             connect = new JButton();
             disconnect = new JButton();
             add_server = new JButton();
-            server_list = new GList(
-                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_background"),
-                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_foreground"),
-                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_background"),
-                    (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_foreground"),
-                    (Border) GraphicsSettings.active_option.get_value("server_panel_list_selected_border")
-            );
+            server_list = new GList();
             GScrollPane server_scroller = new GScrollPane(server_list); //rispetto a JScrollPane viene modificata la grafica
 
             disconnect.setEnabled(false);
@@ -69,6 +63,7 @@ public abstract class ServerList_panel extends Database {
             add_server.setContentAreaFilled(false);
 
             JPanel sep = new JPanel();
+            sep.setOpaque(false);
             sep.setBorder(null);
 
             //aggiunge tutti i componenti al pannello organizzando la gui
@@ -108,25 +103,19 @@ public abstract class ServerList_panel extends Database {
             serverL_panel.add(server_scroller, c);
 
             serverL_panel.setPreferredSize(new Dimension(0, 0));
+
             update_colors();
+            GraphicsSettings.run_at_theme_change(ServerList_panel::update_colors);
         }
         return serverL_panel;
     }
 
     public static void update_colors() {
-        serverL_panel.setBackground((Color) GraphicsSettings.active_option.get_value("server_panel_background"));
-        serverL_panel.getComponents()[3].setBackground((Color) GraphicsSettings.active_option.get_value("server_panel_background")); //cambia il colore del separatore
-        server_list.change_colors(
-                (Color) GraphicsSettings.active_option.get_value("server_panel_list_background"),
-                (Color) GraphicsSettings.active_option.get_value("server_panel_list_foreground"),
-                (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_background"),
-                (Color) GraphicsSettings.active_option.get_value("server_panel_list_selected_foreground"),
-                (Border) GraphicsSettings.active_option.get_value("server_panel_list_selected_border")
-        );
+        server_list.update_colors();
 
-        ButtonIcons connect_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("server_panel_connect");
-        ButtonIcons disconnect_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("server_panel_disconnect");
-        ButtonIcons add_server_icons = (ButtonIcons) GraphicsSettings.active_option.get_value("server_panel_add_server");
+        ButtonIcons connect_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("server_panel_connect");
+        ButtonIcons disconnect_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("server_panel_disconnect");
+        ButtonIcons add_server_icons = (ButtonIcons) GraphicsSettings.active_theme.get_value("server_panel_add_server");
 
         connect.setIcon(connect_icons.getStandardIcon());
         connect.setRolloverIcon(connect_icons.getRolloverIcon());
@@ -146,7 +135,7 @@ public abstract class ServerList_panel extends Database {
         if (Server_manager.is_connected()) { //se non è connesso a nessun server il pulsante disconnect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
             connect.setEnabled(enabled);
         }
-        else { //se è connesso ad un server il pulsante connect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
+        else { //se è connesso a un server il pulsante connect è disattivato, quindi non lo modifica qualsiasi sia il valore di enabled
             disconnect.setEnabled(enabled);
         }
         serverL_panel.setEnabled(enabled);
@@ -212,8 +201,19 @@ public abstract class ServerList_panel extends Database {
                             "inserire un numero valido come valore per la porta"
                     ), null);
 
-                    fail();
-
+                    TempPanel.show(new TempPanel_info(
+                            TempPanel_info.INPUT_REQ,
+                            true,
+                            "link:",
+                            "porta:",
+                            "nome:",
+                            "encoder:",
+                            "indirizzo ip del dns:"
+                    ).set_combo_box(
+                            new int[] {3, 4},
+                            Server_manager.get_encoders_list(),
+                            Database.dns_ca_key.keySet().toArray(new String[0])
+                    ), ADD_SERVER_ACTION);
                     return;
                 }
 
@@ -239,23 +239,24 @@ public abstract class ServerList_panel extends Database {
                             "il nome o indirizzo inseriti non sono validi, inserire nome ed indirizzo validi"
                     ), null);
 
-                    fail();
+                    TempPanel.show(new TempPanel_info(
+                            TempPanel_info.INPUT_REQ,
+                            true,
+                            "link:",
+                            "porta:",
+                            "nome:",
+                            "encoder:",
+                            "indirizzo ip del dns:"
+                    ).set_combo_box(
+                            new int[] {3, 4},
+                            Server_manager.get_encoders_list(),
+                            Database.dns_ca_key.keySet().toArray(new String[0])
+                    ), ADD_SERVER_ACTION);
                 }
             }
 
             @Override
-            public void fail() {
-                TempPanel.show(new TempPanel_info(
-                        TempPanel_info.INPUT_REQ,
-                        true,
-                        "inserisci il link al server:",
-                        "inserisci il nome del server:",
-                        "inserisci l ip del dns:"
-                ).set_combo_box(
-                        new int[] {2},
-                        Database.dns_ca_key.keySet().toArray(new String[0])
-                ), ADD_SERVER_ACTION);
-            }
+            public void fail() {} //non si vuole più aggiungere il server
         };
     };
 
@@ -295,8 +296,8 @@ public abstract class ServerList_panel extends Database {
             this.cell_name = name;
             this.PARENT_LIST = list;
 
-            UIManager.put("MenuItem.selectionBackground", new Color(108, 111, 113));
-            UIManager.put("MenuItem.selectionForeground", Color.lightGray);
+//            UIManager.put("MenuItem.selectionBackground", new Color(108, 111, 113));
+//            UIManager.put("MenuItem.selectionForeground", Color.lightGray);
 
             JMenuItem rename = new JMenuItem("rename");
             JMenuItem remove = new JMenuItem("remove");
