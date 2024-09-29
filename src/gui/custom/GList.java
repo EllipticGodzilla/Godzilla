@@ -126,21 +126,13 @@ public class GList extends JPanel {
         }
     }
 
-    public String getSelectedValue() {
+    public String get_selected_value() {
         if (selected_index == -1) { //se non è selezionata nessuna casella
             return "";
         }
         else {
             return ((ListCell) LIST_PANEL.getComponent(selected_index)).getText();
         }
-    }
-
-    public void reset_list() {
-        elements = new LinkedHashMap<>();
-        LIST_PANEL.removeAll();
-        this.repaint();
-
-        selected_index = -1;
     }
 
     private void adjust_gridy(int from) {
@@ -157,7 +149,7 @@ public class GList extends JPanel {
         }
     }
 
-    static class ListCell extends JTextArea {
+    static class ListCell extends JTextField {
         private final GList PARENT_LIST;
         private final int MY_INDEX;
 

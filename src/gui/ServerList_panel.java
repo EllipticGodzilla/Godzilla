@@ -261,7 +261,7 @@ public abstract class ServerList_panel extends Database {
     };
 
     private static final ActionListener CONNECT_LISTENER = _ -> {
-        String server_name = server_list.getSelectedValue();
+        String server_name = server_list.get_selected_value();
         if (!server_name.isEmpty()) { //se è effettivamente selezionato un server
             Logger.log("tento la connessione con il server: " + server_name);
 

@@ -1,7 +1,5 @@
 package gui.custom;
 
-import gui.graphicsSettings.GraphicsSettings;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -128,6 +126,15 @@ public class CascateMenu extends JPanel {
         if (selected != null) {
             selected.unselect();
             selected = null;
+        }
+    }
+
+    public String get_selected_text() {
+        if (selected != null) {
+            return selected.getRelativeName();
+        }
+        else {
+            return null;
         }
     }
 

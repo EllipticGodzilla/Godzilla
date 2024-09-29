@@ -32,9 +32,10 @@ public abstract class Connection {
     }
 
     public static void init(String ip, int port) throws IOException {
-        //se la connessione non è stata chiusa
+        //controlla che non sia già aperta un altra connessione
         if (sck != null && !sck.isClosed()) {
-            Connection.close();
+            Logger.log("tentativo di inizializzare la classe Connection con il server ad indirizzo ip: " + ip + ", mentre si è già connessi ad un server", true);
+            return;
         }
 
         sck = new Socket(ip, port);
@@ -131,7 +132,7 @@ public abstract class Connection {
         register_action("EOC", EOC_std); //se riceve EOC chiude la connessione
 
         On_arrival EOP_std = ((_, msg) -> { //end of pair
-            if (msg.length == 0) {
+            if (msg.length == 0 && Server_manager.is_paired()) {
                 Logger.log("il client: " + Server_manager.get_paired_usr() + " si è disconnesso");
                 TempPanel.show(new TempPanel_info(
                         TempPanel_info.SINGLE_MSG,
@@ -141,11 +142,14 @@ public abstract class Connection {
 
                 Server_manager.unpair(false);
             }
+            else if (msg.length == 0) { //non è appaiato a nessuno
+                Logger.log("ricevuto dal server la richiesta di scollegarsi da un client mentre non si è appaiati a nessuno", true);
+            }
         });
         register_action("EOP", EOP_std);
 
         On_arrival EOM_std = ((_, msg) -> { //end of mod (chiude la mod attiva al momento)
-            if (msg.length == 0) {
+            if (msg.length == 0 && !ButtonTopBar_panel.active_mod.isEmpty() && Server_manager.is_paired()) {
                 Logger.log("il client: " + Server_manager.get_paired_usr() + " ha chiuso la mod: " + ButtonTopBar_panel.active_mod);
 
                 ButtonTopBar_panel.end_mod(false);
@@ -154,6 +158,12 @@ public abstract class Connection {
                         false,
                         "il client " + Server_manager.get_paired_usr() + " ha chiuso la mod"
                 ), null);
+            }
+            else if (msg.length == 0 && Server_manager.is_paired()) {
+                Logger.log("ricevuto dal client: " + Server_manager.get_paired_usr() + " la richiesta di chiudere la mod mentre nessuna mod è attiva", true);
+            }
+            else if (msg.length == 0) {
+                Logger.log("ricevuto dal server la richiesta di chiudere la mod mentre non si è appaiati a nessun client", true);
             }
         });
         register_action("EOM", EOM_std);
@@ -189,8 +199,9 @@ public abstract class Connection {
 
         //il client a cui è connesso richiede di far partire una mod
         On_arrival SOM_std = ((conv_code, msg) -> {
+            String mod_name = new String(msg);
             if (Server_manager.is_paired()) {
-                String mod_name = new String(msg);
+                Logger.log("il client appaiato: " + Server_manager.get_paired_usr() + " ha richiesto di attivare la mod: " + mod_name);
 
                 TempPanel.show(new TempPanel_info(
                         TempPanel_info.SINGLE_MSG,
@@ -198,12 +209,15 @@ public abstract class Connection {
                         "il client " + Server_manager.get_paired_usr() + " ha richiesto di attivare la mod " + mod_name
                 ), new StartMod(conv_code, mod_name));
             }
+            else {
+                Logger.log("ricevuto dal server una richiesta di attivare la mod: " + mod_name + " mentre non si è appaiati a nessun client", true);
+            }
         });
         register_action("SOM", SOM_std);
     }
 
     //registra un nuova azione per un dato prefisso
-    private static void register_action(String prefix, On_arrival action) {
+    public static void register_action(String prefix, On_arrival action) {
         Vector<On_arrival> action_list = prefix_actions.get(prefix);
 
         if (action_list != null) { //c'è già almeno un azione registrata per questo prefisso

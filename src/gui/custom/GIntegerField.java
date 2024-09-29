@@ -69,8 +69,14 @@ public class GIntegerField extends JTextField {
 
         String input_str = validated_input.toString();
 
-        if (!input_str.isEmpty() && !input_str.equals("-")) { //se c'è almeno un numero controlla sia -1 <= x <= 255
-            int input_num = Integer.parseInt(input_str);
+        if (!input_str.replaceAll("-", "").isEmpty()) { //se c'è almeno un numero controlla sia MIN <= x <= MAX
+            int input_num;
+            try {
+                input_num = Integer.parseInt(input_str);
+            }
+            catch (NumberFormatException _) {
+                return "0";
+            }
 
             if (input_num > 255)
                 input_num = 255;

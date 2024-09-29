@@ -7,8 +7,8 @@ import java.util.Arrays;
 
 public class SecureFile {
     private boolean is_encoded;
-    private final FileOutputStream FOS;
 
+    private final FileOutputStream FOS;
     private final File FILE;
 
     protected SecureFile(String pathname) {
@@ -64,69 +64,81 @@ public class SecureFile {
     }
 
     protected byte[] read() {
+        byte[] txt;
         try {
             FileInputStream fis = new FileInputStream(FILE);
             if (!is_encoded) {
                 fis.readNBytes(6);
-            } //skippa i primi 6 byte poiche non sono contenuto del file
+            } //salta i primi 6 byte poiché non sono contenuto del file ma indicano che il file non è cifrato
 
-            byte[] txt = fis.readAllBytes();
+            txt = fis.readAllBytes();
             fis.close();
-
-            if (is_encoded) {
-                txt = File_cipher.decrypt(txt);
-            }
-
-            return txt;
-        } catch (IllegalBlockSizeException | BadPaddingException e) {
-            Logger.log("impossibile decifrare il contenuto del file " + FILE.getAbsolutePath() + ", file corrotto", true);
-            return null;
-        } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true);
+        }
+        catch (IOException _) {
+            Logger.log("impossibile leggere il contenuto del file: " + FILE.getAbsolutePath(), true);
             return null;
         }
+
+        if (is_encoded) {
+            try {
+                txt = File_cipher.decrypt(txt);
+            } catch (IllegalBlockSizeException | BadPaddingException _) {
+                Logger.log("impossibile decifrare il contenuto del file: " + FILE.getAbsolutePath() + ", file corrotto", true);
+                return null;
+            }
+        }
+
+        return txt;
     }
 
     protected void append(String txt) {
-        try {
-            if (is_encoded) {
-                String file_txt = new String(read()) + txt;
-                replace(file_txt);
-            } else {
+        if (is_encoded) {
+            String file_txt = new String(read()) + txt;
+            replace(file_txt);
+        } else {
+            try {
                 FOS.write(txt.getBytes());
             }
-        } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true);
+            catch (IOException _) {
+                Logger.log("impossibile scrivere nel file: " + FILE.getAbsolutePath(), true);
+            }
         }
     }
 
     protected void replace(String txt) {
-        if (!is_encoded) {
-            txt = "clear\n" + txt;
+        try { //elimina il contenuto del file
+            new FileOutputStream(FILE, false).close();
+        }
+        catch (IOException _) {
+            Logger.log("errore nell'eliminare il contenuto del file: " + FILE.getAbsolutePath(), true);
+            return;
         }
 
-        byte[] txt_b = txt.getBytes();
-        replace(txt_b);
-    }
+        //calcola i bytes da scrivere nel file
+        byte[] txt_bytes;
+        if (is_encoded) { //se deve cifrare il testo
+            try {
+                txt_bytes = File_cipher.crypt(txt.getBytes());
 
-    protected void replace(byte[] txt) {
-        try {
-            clear_file();
-
-            if (is_encoded) {
-                txt = File_cipher.crypt(txt);
+                if (txt_bytes == null) //non è ancora stato inizializzato File_cipher
+                    return;
             }
-
-            FOS.write(txt);
-        } catch (IllegalBlockSizeException | BadPaddingException _) {
-            Logger.log("impossibile decifrare il contenuto del file " + FILE.getAbsolutePath() + ", file corrotto", true);
-        } catch (IOException _) {
-            Logger.log("impossibile aprire il file " + FILE.getAbsolutePath() + ", il file non esiste", true);
+            catch (IllegalBlockSizeException | BadPaddingException _) {
+                Logger.log("impossibile decifrare il contenuto del file: " + FILE.getAbsolutePath(), true);
+                txt_bytes = new byte[0];
+            }
         }
-    }
+        else { //se non deve cifrare il testo, indica che il file non è cifrato
+            txt_bytes = ("clear\n" + txt).getBytes();
+        }
 
-    private void clear_file() throws IOException {
-        new FileOutputStream(FILE, false).close();
+        //scrive il contenuto nel file
+        try {
+            FOS.write(txt_bytes);
+        }
+        catch (IOException _) {
+            Logger.log("impossibile scrivere nel file: " + FILE.getAbsolutePath(), true);
+        }
     }
 
     protected void delete() {

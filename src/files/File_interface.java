@@ -97,44 +97,6 @@ public abstract class File_interface extends Database {
         });
     }
 
-    public static void update_servers_info() {
-        String key_list_txt = read_file("database/DNS_CA_list.dat");
-        String[] file_lines = key_list_txt.split("\n");
-
-        Pattern file_line_pattern = Pattern.compile("([^:]+):([^:]+)");
-        for (String line : file_lines) {
-            Matcher line_matcher = file_line_pattern.matcher(line);
-
-            if (line_matcher.matches()) {
-                try {
-                    String dns_ip = line_matcher.group(1);
-                    byte[] ca_pkey = Base64.getDecoder().decode(line_matcher.group(2));
-
-                    add_dns_ca_key(dns_ip, ca_pkey);
-                    Logger.log("memorizzate le informazioni per il dns: " + dns_ip);
-                }
-                catch (IllegalArgumentException _) { //errore nella decodifica della chiave pubblica
-                    Logger.log("errore nella formattazione della chiave pubblica della CA nella linea: " + line + " nel file DNS_CA_list.dat", true);
-                }
-            }
-            else {
-                Logger.log("la linea: " + line + " in DNS_CA_list.dat non è comprensibile", true);
-            }
-        }
-
-        if (!Database.dns_ca_key.isEmpty()) { //se conosce almeno un dns
-            init_server_list();
-        }
-        else { //se non ne conosce nessuno richiede prima di aggiungerne
-            TempPanel.show(new TempPanel_info(
-                    TempPanel_info.INPUT_REQ,
-                    !Database.dns_ca_key.isEmpty(), //se sta aggiungendo un nuovo dns mostra annulla, altrimenti no
-                    "indirizzo ip del dns:",
-                    "chiave pubblica della CA:"
-            ), ADD_DNSCA_ACTION);
-        }
-    }
-
     public static void reload_from_disk() {
         if (initialized) {
             Database.dns_ca_key.clear(); //rimuove tutti i DNS/CA memorizzati
@@ -203,7 +165,43 @@ public abstract class File_interface extends Database {
         files.put(file_name, new SecureFile(file.getPath()));
     }
 
-    //    MANAGE OF CA PUBLIC KEY
+    public static void update_servers_info() {
+        String key_list_txt = read_file("database/DNS_CA_list.dat");
+        String[] file_lines = key_list_txt.split("\n");
+
+        Pattern file_line_pattern = Pattern.compile("([^:]+):([^:]+)");
+        for (String line : file_lines) {
+            Matcher line_matcher = file_line_pattern.matcher(line);
+
+            if (line_matcher.matches()) {
+                try {
+                    String dns_ip = line_matcher.group(1);
+                    byte[] ca_pkey = Base64.getDecoder().decode(line_matcher.group(2));
+
+                    add_dns_ca_key(dns_ip, ca_pkey);
+                    Logger.log("memorizzate le informazioni per il dns: " + dns_ip);
+                }
+                catch (IllegalArgumentException _) { //errore nella decodifica della chiave pubblica
+                    Logger.log("errore nella formattazione della chiave pubblica della CA nella linea: " + line + " nel file DNS_CA_list.dat", true);
+                }
+            }
+            else {
+                Logger.log("la linea: " + line + " in DNS_CA_list.dat non è comprensibile", true);
+            }
+        }
+
+        if (!Database.dns_ca_key.isEmpty()) { //se conosce almeno un dns
+            init_server_list();
+        }
+        else { //se non ne conosce nessuno richiede prima di aggiungerne
+            TempPanel.show(new TempPanel_info(
+                    TempPanel_info.INPUT_REQ,
+                    !Database.dns_ca_key.isEmpty(), //se sta aggiungendo un nuovo dns mostra annulla, altrimenti no
+                    "indirizzo ip del dns:",
+                    "chiave pubblica della CA:"
+            ), ADD_DNSCA_ACTION);
+        }
+    }
 
     private static void add_dns_ca_key(String ip, byte[] ca_pkey) {
         try {

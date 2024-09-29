@@ -9,7 +9,6 @@ import gui.graphicsSettings.GraphicsSettings;
 import network.Server_manager;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -111,7 +110,7 @@ public abstract class ClientList_panel extends Database {
     }
 
     public static ActionListener try_pair = _ -> {
-        String pair_usr = clients_list.getSelectedValue();
+        String pair_usr = clients_list.get_selected_value();
 
         if (!pair_usr.isEmpty() && !Server_manager.is_paired()) { //se è selezionato un client e non è appaiato con nessun altro client
             Server_manager.pair_with(pair_usr);
@@ -157,7 +156,7 @@ public abstract class ClientList_panel extends Database {
 
     public static void update_client_list(String list) {
         //elimina la lista precedente
-        clients_list.reset_list();
+        clients_list.clear();
 
         //imposta la nuova lista di client
         Pattern p = Pattern.compile(";");
